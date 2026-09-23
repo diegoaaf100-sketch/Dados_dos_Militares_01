@@ -11,15 +11,15 @@ def check_password():
 
     def password_entered():
         """Verifica se o usuário e senha correspondem aos cadastrados nos Secrets."""
-        user = st.session_state["username"]
-        pwd = st.session_state["password"]
+        user = st.session_state["teste"]
+        pwd = st.session_state["topissimo"]
 
         if user in st.secrets.get("passwords", {}) and st.secrets[
             "passwords"
         ].get(user) == pwd:
             st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Limpa a senha da memória
-            del st.session_state["username"]
+            del st.session_state["teste"]  # Limpa a senha da memória
+            del st.session_state["topissimo"]
         else:
             st.session_state["password_correct"] = False
 
