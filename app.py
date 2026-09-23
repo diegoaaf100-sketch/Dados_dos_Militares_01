@@ -9,7 +9,7 @@ Original file is located at
 
 # Biblioteca necessárias
 
-!pip install streamlit pandas pyngrok -q
+
 
 from google.colab import userdata
 from pyngrok import ngrok # Changed 'import ngrok' to 'from pyngrok import ngrok'
