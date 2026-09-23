@@ -66,14 +66,6 @@ if st.sidebar.button("🚪 Sair / Logout"):
 st.title("📊 Dashboard de Movimentações")
 st.markdown("---")
 
-    # Exibição dos dados e filtros do seu dashboard
-    st.subheader("📋 Registros Encontrados")
-    st.dataframe(df, use_container_width=True)
-
-except Exception as e:
-    st.error(f"Erro ao carregar dados: {e}")
-
-
 
 # --- CENTRALIZANDO E APROXIMANDO AS IMAGENS ---
 # Criamos 4 colunas: [Espaço Esquerdo, Imagem 1, Imagem 2, Espaço Direito]
