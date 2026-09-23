@@ -2,35 +2,37 @@
 import pandas as pd
 import streamlit as st
 
-import pandas as pd
-import streamlit as st
-
 st.set_page_config(page_title="Dashboard Restrito", layout="wide")
 
 
 # --- FUNÇÃO DE AUTENTICAÇÃO ---
 def check_password():
-    """Retorna True se o usuário digitou o login e senha corretos."""
+    """Valida usuário e senha comparando com o bloco [passwords] nos Secrets."""
 
     def password_entered():
-        """Verifica se o usuário e senha correspondem aos cadastrados nos Secrets."""
-        user = st.session_state["username"]
-        pwd = st.session_state["password"]
+        # Remove espaços acidentais antes ou depois da digitação
+        user = st.session_state.get("username", "").strip()
+        pwd = st.session_state.get("password", "").strip()
 
-        if user in st.secrets.get("passwords", {}) and st.secrets[
-            "passwords"
-        ].get(user) == pwd:
+        # Busca o dicionário de senhas nos Secrets
+        passwords_dict = st.secrets.get("passwords", {})
+
+        # Compara usuário e senha
+        if user in passwords_dict and str(passwords_dict[user]) == pwd:
             st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Limpa a senha da memória
-            del st.session_state["username"]
+            # Limpa credenciais da memória
+            if "password" in st.session_state:
+                del st.session_state["password"]
+            if "username" in st.session_state:
+                del st.session_state["username"]
         else:
             st.session_state["password_correct"] = False
 
-    # Se já autenticado, retorna True
+    # Libera acesso se a sessão já estiver autenticada
     if st.session_state.get("password_correct", False):
         return True
 
-    # Exibe a tela de Login
+    # Renderiza a Interface de Login
     st.title("🔒 Acesso Restrito ao Dashboard")
 
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -39,6 +41,7 @@ def check_password():
         st.text_input("Senha", type="password", key="password")
         st.button("Entrar", on_click=password_entered)
 
+        # Exibe mensagem caso a autenticação falhe
         if "password_correct" in st.session_state and not st.session_state[
             "password_correct"
         ]:
@@ -47,40 +50,21 @@ def check_password():
     return False
 
 
-# Se a senha não for válida, interrompe a execução e exibe apenas a tela de login
+# Bloqueia a execução se não autenticado
 if not check_password():
     st.stop()
 
 # ==============================================================================
-# A PARTIR DAQUI O CÓDIGO SÓ É EXECUTADO APÓS O LOGIN COM SUCESSO
+# CÓDIGO DO DASHBOARD (Apenas executado após login aprovado)
 # ==============================================================================
 
-# Botão de Logout na Barra Lateral
-st.sidebar.title(f"Bem-vindo(a)!")
+st.sidebar.success("Autenticado com sucesso!")
 if st.sidebar.button("🚪 Sair / Logout"):
     st.session_state["password_correct"] = False
     st.rerun()
 
-# --- CARREGAMENTO DOS DADOS ---
-SHEET_ID = st.secrets["SHEET_ID"]
-
-
-@st.cache_data(ttl=5)
-def load_data(sheet_id):
-    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-    df = pd.read_csv(url, header=6)
-    df.columns = [
-        str(col).strip().replace(":", "-") for col in df.columns
-    ]
-    df = df.fillna("-")
-    return df
-
-
-try:
-    df = load_data(SHEET_ID)
-
-    st.title("📊 Dashboard de Movimentações")
-    st.markdown("---")
+st.title("📊 Dashboard de Movimentações")
+st.markdown("---")
 
     # Exibição dos dados e filtros do seu dashboard
     st.subheader("📋 Registros Encontrados")
