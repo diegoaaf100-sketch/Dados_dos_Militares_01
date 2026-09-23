@@ -2,8 +2,8 @@ import pandas as pd
 import streamlit as st
 
 # Configuração da página
-st.set_page_config(page_title="Dashboard de Movimentação", layout="wide")
-st.title("📊 Dashboard de Movimentações")
+st.set_page_config(page_title="DGP - Dados dos Militares", layout="wide")
+st.title("📊 DGP - Dados dos Militares")
 
 # --- ADICIONAR IMAGEM NO TOPO ---
 # Substitua "logo.png" pelo nome exato do arquivo que você enviou ao GitHub
