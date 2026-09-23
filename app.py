@@ -1,9 +1,7 @@
 import pandas as pd
 import streamlit as st
 
-# Configuração da página
-st.set_page_config(page_title="DGP - Dados dos Militares", layout="wide")
-st.title("📊 DGP - Dados dos Militares")
+
 
 # --- CENTRALIZANDO E APROXIMANDO AS IMAGENS ---
 # Criamos 4 colunas: [Espaço Esquerdo, Imagem 1, Imagem 2, Espaço Direito]
