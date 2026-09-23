@@ -7,7 +7,7 @@ st.title("📊 Dashboard de Movimentações")
 
 # --- ADICIONAR IMAGEM NO TOPO ---
 # Substitua "logo.png" pelo nome exato do arquivo que você enviou ao GitHub
-st.image("images", width=250)
+st.image("images.png", width=250)
 
 # Função para carregar os dados do Google Sheets
 @st.cache_data(ttl=5)
