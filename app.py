@@ -216,13 +216,4 @@ print(f"🔑 SUA SENHA DE ACESSO (IP Público): {ip}\n")
 # except Exception as e:
 #     st.error(f"Erro ao carregar os dados: {e}")
 
-import time
 
-!pkill -f streamlit
-!pkill -f cloudflared
-
-!streamlit run app.py --server.port 8501 --server.address 127.0.0.1 &>/content/logs.txt &
-
-time.sleep(3)
-
-!./cloudflared tunnel --url http://127.0.0.1:8501
