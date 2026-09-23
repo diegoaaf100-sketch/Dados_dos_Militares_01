@@ -2,6 +2,9 @@
 import pandas as pd
 import streamlit as st
 
+import pandas as pd
+import streamlit as st
+
 st.set_page_config(page_title="Dashboard Restrito", layout="wide")
 
 
@@ -11,15 +14,15 @@ def check_password():
 
     def password_entered():
         """Verifica se o usuário e senha correspondem aos cadastrados nos Secrets."""
-        user = st.session_state["teste"]
-        pwd = st.session_state["topissimo"]
+        user = st.session_state["username"]
+        pwd = st.session_state["password"]
 
         if user in st.secrets.get("passwords", {}) and st.secrets[
             "passwords"
         ].get(user) == pwd:
             st.session_state["password_correct"] = True
-            del st.session_state["teste"]  # Limpa a senha da memória
-            del st.session_state["topissimo"]
+            del st.session_state["password"]  # Limpa a senha da memória
+            del st.session_state["username"]
         else:
             st.session_state["password_correct"] = False
 
