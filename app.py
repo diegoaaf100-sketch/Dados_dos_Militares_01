@@ -23,7 +23,7 @@ def load_data(sheet_id):
     url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
 
     # header=6 indica que os nomes das colunas estão na Linha 7 do Google Sheets
-    df = pd.read_csv(url, header=6)
+    df = pd.read_csv(url, header=8)
 
     # Limpeza dos nomes das colunas (remove espaços e dois-pontos)
     df.columns = [
