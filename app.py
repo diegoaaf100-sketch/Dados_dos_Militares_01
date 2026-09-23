@@ -18,19 +18,22 @@ st.markdown("<h1 style='text-align: center;'>📊 DGP - Dados dos Militares</h1>
 st.markdown("---")
 
 
-# Função para carregar os dados do Google Sheets
 @st.cache_data(ttl=5)
 def load_data(sheet_id):
     url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-    df = pd.read_csv(url)
 
-    # LIMPEZA DAS COLUNAS: remove espaços e substitui dois-pontos por hífen
+    # header=6 indica que os nomes das colunas estão na Linha 7 do Google Sheets
+    df = pd.read_csv(url, header=6)
+
+    # Limpeza dos nomes das colunas (remove espaços e dois-pontos)
     df.columns = [
         str(col).strip().replace(":", "-") for col in df.columns
     ]
 
-    return df
+    # Preenche células vazias com hífen
+    df = df.fillna("-")
 
+    return df
 
 # --- INSIRA O ID DA SUA PLANILHA ABAIXO ---
 SHEET_ID = st.secrets["SHEET_ID"]
