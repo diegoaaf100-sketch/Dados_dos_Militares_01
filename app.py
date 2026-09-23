@@ -11,7 +11,7 @@ Original file is located at
 
 
 
-from google.colab import userdata
+SHEET_ID = st.secrets["SHEET_ID"]
 from pyngrok import ngrok # Changed 'import ngrok' to 'from pyngrok import ngrok'
 
 # Get the ngrok authentication token from Colab Secrets
