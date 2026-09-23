@@ -28,7 +28,7 @@ def load_data(sheet_id):
 
 
 # --- INSIRA O ID DA SUA PLANILHA ABAIXO ---
-SHEET_ID = st.secrets["1XSa9NOQVuaWv1_CIVndoZf1aW2pJJmoY"]
+SHEET_ID = st.secrets["SHEET_ID"]
 
 try:
     # Botão de atualização manual na barra lateral
