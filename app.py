@@ -120,12 +120,12 @@ ip = (
 print(f"🔑 SUA SENHA DE ACESSO (IP Público): {ip}\n")
 
 # Inicia o Streamlit + LocalTunnel
-!streamlit run app.py &>/content/logs.txt &
-!npx localtunnel --port 8501
+
+
 
 # Instalar as dependências
 
-!pip install -q streamlit pandas pyngrok
+
 
 # Commented out IPython magic to ensure Python compatibility.
 # %%writefile app.py
