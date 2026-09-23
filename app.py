@@ -5,10 +5,17 @@ import streamlit as st
 st.set_page_config(page_title="DGP - Dados dos Militares", layout="wide")
 st.title("📊 DGP - Dados dos Militares")
 
-# --- ADICIONAR IMAGEM NO TOPO ---
-# Substitua "logo.png" pelo nome exato do arquivo que você enviou ao GitHub
-st.image("images.png", width=250)
-st.image("11679.png", width=250)
+# --- CRIANDO DUAS COLUNAS PARA AS IMAGENS ---
+col1, col2 = st.columns(2)
+
+with col1:
+    # Primeira imagem (ex: Logo 1 ou Brasão)
+    st.image("images.png", width=200)
+
+with col2:
+    # Segunda imagem (ex: Logo 2 ou Bandeira)
+    st.image("11679.png", width=200)
+
 
 # Função para carregar os dados do Google Sheets
 @st.cache_data(ttl=5)
