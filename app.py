@@ -5,16 +5,19 @@ import streamlit as st
 st.set_page_config(page_title="DGP - Dados dos Militares", layout="wide")
 st.title("📊 DGP - Dados dos Militares")
 
-# --- CRIANDO DUAS COLUNAS PARA AS IMAGENS ---
-col1, col2 = st.columns(2)
+# --- CENTRALIZANDO E APROXIMANDO AS IMAGENS ---
+# Criamos 4 colunas: [Espaço Esquerdo, Imagem 1, Imagem 2, Espaço Direito]
+# Os valores controlam a proporção de largura de cada coluna
+_, col_img1, col_img2, _ = st.columns([2, 1, 1, 2])
 
-with col1:
-    # Primeira imagem (ex: Logo 1 ou Brasão)
-    st.image("images.png", width=200)
+with col_img1:
+    st.image("images.png", width=140)
 
-with col2:
-    # Segunda imagem (ex: Logo 2 ou Bandeira)
-    st.image("11679.png", width=200)
+with col_img2:
+    st.image("11679.png", width=140)
+
+st.markdown("<h1 style='text-align: center;'>📊 DGP - Dados dos Militares</h1>", unsafe_allow_html=True)
+st.markdown("---")
 
 
 # Função para carregar os dados do Google Sheets
