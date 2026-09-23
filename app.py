@@ -23,7 +23,12 @@ st.markdown("---")
 def load_data(sheet_id):
     url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
     df = pd.read_csv(url)
-    df.columns = [str(col).strip() for col in df.columns]
+
+    # LIMPEZA DAS COLUNAS: remove espaços e substitui dois-pontos por hífen
+    df.columns = [
+        str(col).strip().replace(":", "-") for col in df.columns
+    ]
+
     return df
 
 
