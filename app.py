@@ -5,6 +5,9 @@ import streamlit as st
 st.set_page_config(page_title="Dashboard de Movimentação", layout="wide")
 st.title("📊 Dashboard de Movimentações")
 
+# --- ADICIONAR IMAGEM NO TOPO ---
+# Substitua "logo.png" pelo nome exato do arquivo que você enviou ao GitHub
+st.image("images", width=250)
 
 # Função para carregar os dados do Google Sheets
 @st.cache_data(ttl=5)
