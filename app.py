@@ -90,8 +90,8 @@ st.markdown("---")
 @st.cache_data(ttl=5)
 def load_data(sheet_id):
     url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-    # header=8 lê a linha 9 como cabeçalho
-    df = pd.read_csv(url, header=8)
+    # header=0 lê a linha 1 como cabeçalho
+    df = pd.read_csv(url, header=0)
     df.columns = [str(col).strip().replace(":", "-") for col in df.columns]
     df = df.fillna("-")
     return df
