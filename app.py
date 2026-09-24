@@ -271,69 +271,71 @@ try:
                     client = get_gspread_client()
                     sheet = client.open_by_key(SHEET_ID).sheet1
 
-                    # Lista completa dos 50 campos organizados em ordem de envio
+                    # Função auxiliar para garantir que todo valor seja string ou número simples
+                    def formatar_valor(val):
+                        if val is None:
+                            return ""
+                        return str(val).strip()
+
+                    # Montagem da lista tratando todos os valores
                     nova_linha = [
-                        posto_grad,
-                        ome_qod,
-                        atividade,
-                        ome,
-                        str(data_mov_sp) if data_mov_sp else "",
-                        municipio,
-                        regiao,
-                        obs,
-                        afastamentos_sup_90,
-                        orgao,
-                        num_funcional,
-                        matricula,
-                        nome,
-                        nome_guerra,
-                        ome_anterior,
-                        (
-                            str(data_chegada_obm_anterior)
-                            if data_chegada_obm_anterior
-                            else ""
-                        ),
-                        onus_origem,
-                        poder,
-                        str(inicio_cessao) if inicio_cessao else "",
-                        ato,
-                        doc_publicacao,
-                        sp_adicao,
-                        renovacao_cessao_atos,
-                        doe_bgsds_renovacao,
-                        num_ident,
-                        cpf_ponto,
-                        cpf,
-                        sexo,
-                        raca_cor,
-                        ano_ingresso,
-                        str(data_praca) if data_praca else "",
-                        tempo_servico_anos,
-                        tempo_servico_amd,
-                        tempo_servico_dias,
-                        str(data_ult_promocao) if data_ult_promocao else "",
-                        principio_ult_promocao,
-                        tempo_posto_atual_dias,
-                        sei_deslig,
-                        tempo_obm_atual,
-                        str(hoje_data) if hoje_data else "",
-                        somatorio_ltip_anos,
-                        somatorio_ltip_amd,
-                        somatorio_ltip_dias,
-                        total_dias_ltip_posto,
-                        str(inicio_ltip) if inicio_ltip else "",
-                        str(termino_ltip) if termino_ltip else "",
-                        movimentado,
-                        suplemento_pessoal_num_ano,
-                        (
-                            str(data_suplemento_pessoal)
-                            if data_suplemento_pessoal
-                            else ""
-                        ),
-                        fones,
+                        formatar_valor(posto_grad),
+                        formatar_valor(ome_qod),
+                        formatar_valor(atividade),
+                        formatar_valor(ome),
+                        formatar_valor(data_mov_sp),
+                        formatar_valor(municipio),
+                        formatar_valor(regiao),
+                        formatar_valor(obs),
+                        formatar_valor(afastamentos_sup_90),
+                        formatar_valor(orgao),
+                        formatar_valor(num_funcional),
+                        formatar_valor(matricula),
+                        formatar_valor(nome),
+                        formatar_valor(nome_guerra),
+                        formatar_valor(ome_anterior),
+                        formatar_valor(data_chegada_obm_anterior),
+                        formatar_valor(onus_origem),
+                        formatar_valor(poder),
+                        formatar_valor(inicio_cessao),
+                        formatar_valor(ato),
+                        formatar_valor(doc_publicacao),
+                        formatar_valor(sp_adicao),
+                        formatar_valor(renovacao_cessao_atos),
+                        formatar_valor(doe_bgsds_renovacao),
+                        formatar_valor(num_ident),
+                        formatar_valor(cpf_ponto),
+                        formatar_valor(cpf),
+                        formatar_valor(sexo),
+                        formatar_valor(raca_cor),
+                        formatar_valor(ano_ingresso),
+                        formatar_valor(data_praca),
+                        formatar_valor(tempo_servico_anos),
+                        formatar_valor(tempo_servico_amd),
+                        formatar_valor(tempo_servico_dias),
+                        formatar_valor(data_ult_promocao),
+                        formatar_valor(principio_ult_promocao),
+                        formatar_valor(tempo_posto_atual_dias),
+                        formatar_valor(sei_deslig),
+                        formatar_valor(tempo_obm_atual),
+                        formatar_valor(hoje_data),
+                        formatar_valor(somatorio_ltip_anos),
+                        formatar_valor(somatorio_ltip_amd),
+                        formatar_valor(somatorio_ltip_dias),
+                        formatar_valor(total_dias_ltip_posto),
+                        formatar_valor(inicio_ltip),
+                        formatar_valor(termino_ltip),
+                        formatar_valor(movimentado),
+                        formatar_valor(suplemento_pessoal_num_ano),
+                        formatar_valor(data_suplemento_pessoal),
+                        formatar_valor(fones),
                     ]
 
-                    sheet.append_row(nova_linha, value_input_option="USER_ENTERED")
+                    # Envia forçando interpretação correta no Google Sheets
+                    sheet.append_row(
+                        nova_linha, value_input_option="USER_ENTERED"
+                    )
+
                     st.success("✅ Registro cadastrado com sucesso!")
                     st.cache_data.clear()
                     st.rerun()
