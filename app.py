@@ -267,7 +267,7 @@ try:
                 "💾 Salvar Registro Completo na Planilha"
             )
 
-        # --- LÓGICA DE GRAVAÇÃO NO GOOGLE SHEETS VIA GSPREAD ---
+       # --- LÓGICA DE GRAVAÇÃO COM DIAGNÓSTICO DETALHADO ---
         if btn_salvar:
             if not nome and not matricula:
                 st.warning(
@@ -336,6 +336,7 @@ try:
                         formatar_valor(fones),
                     ]
 
+                    # Envia para a planilha
                     sheet.append_row(
                         nova_linha, value_input_option="USER_ENTERED"
                     )
@@ -345,11 +346,10 @@ try:
                     st.rerun()
 
                 except Exception as err_grava:
-                    st.error(
-                        f"Erro ao gravar registro no Google Sheets: {err_grava}"
-                    )
+                    import traceback
 
-    st.markdown("---")
+                    st.error(f"❌ Erro ao gravar registro: {err_grava}")
+                    st.code(traceback.format_exc(), language="python")
 
     # ==============================================================================
     # 3. FILTROS E BUSCA POR TEXTO
