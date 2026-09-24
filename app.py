@@ -80,7 +80,7 @@ with col_img2:
     st.image("11679.png", width=140)
 
 st.markdown(
-    "<h1 style='text-align: center;'> DGP - Dados dos Militares</h1>",
+    "<h1 style='text-align: center;'>📊 DGP - Dados dos Militares</h1>",
     unsafe_allow_html=True,
 )
 st.markdown("---")
@@ -109,42 +109,239 @@ try:
     df_filtrado = df.copy()
 
     # ==============================================================================
-    # 2. FORMULÁRIO DE CADASTRO DE NOVOS REGISTROS
+    # 2. FORMULÁRIO DE CADASTRO DE NOVOS REGISTROS (50 CAMPOS)
     # ==============================================================================
     with st.expander("➕ **Cadastrar Novo Registro na Planilha**", expanded=False):
-        with st.form("novo_registro_form", clear_on_submit=True):
-            c1, c2 = st.columns(2)
-            with c1:
-                nome = st.text_input("Nome / Militar")
-                posto = st.selectbox(
-                    "Posto/Graduação",
-                    ["Soldado", "Cabo", "Sargento", "Tenente", "Capitão"],
-                )
-            with c2:
-                movimentacao = st.selectbox(
-                    "Tipo de Movimentação",
-                    ["Entrada", "Saída", "Transferência"],
-                )
-                observacao = st.text_area("Observações")
+        with st.form("novo_registro_militar_form", clear_on_submit=True):
 
-            btn_salvar = st.form_submit_button("💾 Salvar Registro na Planilha")
+            tab_pessoal, tab_lotacao, tab_cessao, tab_ltip, tab_outros = st.tabs([
+                "👤 Identificação & Pessoal",
+                "🏢 Lotação & Promoção",
+                "🔄 Cessão & Movimentação",
+                "⏳ LTIP & Afastamentos",
+                "📝 Documentos & Observações",
+            ])
 
+            # --- ABA 1: IDENTIFICAÇÃO PESSOAL ---
+            with tab_pessoal:
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    num_funcional = st.text_input("nº Funcional:")
+                    matricula = st.text_input("Matrícula:")
+                    cpf_ponto = st.text_input("CPF.:")
+                    cpf = st.text_input("CPF:")
+                    num_ident = st.text_input("Nº IDENT.:")
+                with c2:
+                    nome = st.text_input("Nome:")
+                    nome_guerra = st.text_input("Nome de Guerra:")
+                    sexo = st.selectbox("SEXO:", ["", "MASCULINO", "FEMININO"])
+                    raca_cor = st.selectbox(
+                        "Raça/Cor:",
+                        ["", "BRANCA", "PRETA", "PARDA", "AMARELA", "INDÍGENA"],
+                    )
+                with c3:
+                    posto_grad = st.text_input("Posto/ Grad:")
+                    fones = st.text_input("Fones:")
+                    ano_ingresso = st.text_input("Ano de ingresso:")
+                    data_praca = st.date_input("Data de praça:", value=None)
+
+            # --- ABA 2: LOTAÇÃO & PROMOÇÃO ---
+            with tab_lotacao:
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    ome = st.text_input("OME:")
+                    ome_qod = st.text_input("OME QOD:")
+                    atividade = st.text_input("Atividade:")
+                    municipio = st.text_input("Município:")
+                    regiao = st.text_input("Região:")
+                with c2:
+                    tempo_servico_anos = st.number_input(
+                        "Tempo de serviço (anos):", min_value=0, step=1
+                    )
+                    tempo_servico_amd = st.text_input(
+                        "Tempo de serviço (ano, mês, dias):"
+                    )
+                    tempo_servico_dias = st.number_input(
+                        "Tempo de serviço (dias):", min_value=0, step=1
+                    )
+                    tempo_obm_atual = st.text_input("Tempo na OBM atual:")
+                with c3:
+                    data_ult_promocao = st.date_input(
+                        "Data da última promoção ou Implant. PCNH:", value=None
+                    )
+                    principio_ult_promocao = st.text_input(
+                        "Princípio da última promoção:"
+                    )
+                    tempo_posto_atual_dias = st.number_input(
+                        "Tempo no Posto/Grad. atual EM DIAS:", min_value=0, step=1
+                    )
+
+            # --- ABA 3: CESSÃO & MOVIMENTAÇÃO ---
+            with tab_cessao:
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    data_mov_sp = st.date_input(
+                        "Data da Movimentação em SP:", value=None
+                    )
+                    ome_anterior = st.text_input(
+                        "OME ANTERIOR AO ÚLTIMO SP PUBLICADO:"
+                    )
+                    data_chegada_obm_anterior = st.date_input(
+                        "Data de chegada na OBM Anteior:", value=None
+                    )
+                    movimentado = st.text_input(
+                        "Movimentado (apagar antes de atualizar o SP):"
+                    )
+                with c2:
+                    orgao = st.text_input("ÓRGÃO:")
+                    poder = st.text_input("Poder:")
+                    onus_origem = st.selectbox(
+                        "Ônus para Origem:", ["", "SIM", "NÃO"]
+                    )
+                    inicio_cessao = st.date_input(
+                        "Início da Cessão ou requisição:", value=None
+                    )
+                with c3:
+                    renovacao_cessao_atos = st.text_input(
+                        "Renovação de cessão - Atos/Portarias/Documentos:"
+                    )
+                    doe_bgsds_renovacao = st.text_input("DOE/BGSDS de renovação:")
+                    sei_deslig = st.text_input("SEI deslig.:")
+
+            # --- ABA 4: LTIP & AFASTAMENTOS ---
+            with tab_ltip:
+                c1, c2 = st.columns(2)
+                with c1:
+                    afastamentos_sup_90 = st.text_area(
+                        "Processo RR e AFASTAMENTOS SUP. A 90 DIAS ININTERRUPTOS, PUBLICADOS EM SP:"
+                    )
+                    inicio_ltip = st.date_input("INÍCIO DA LTIP:", value=None)
+                    termino_ltip = st.date_input(
+                        "TÉRMINO DA LTIP (inserir data de apresentação):", value=None
+                    )
+                with c2:
+                    somatorio_ltip_anos = st.text_input(
+                        "Somatório LTIP gozada em anos:"
+                    )
+                    somatorio_ltip_amd = st.text_input(
+                        "Somatório LTIP gozada em anos/meses/dias:"
+                    )
+                    somatorio_ltip_dias = st.number_input(
+                        "Somatório de todas LTIP gozadas em dias:",
+                        min_value=0,
+                        step=1,
+                    )
+                    total_dias_ltip_posto = st.number_input(
+                        "TOTAL DIAS EM LTIP no MESMO Posto/Grad.:",
+                        min_value=0,
+                        step=1,
+                    )
+
+            # --- ABA 5: DOCUMENTOS & OBSERVAÇÕES ---
+            with tab_outros:
+                c1, c2 = st.columns(2)
+                with c1:
+                    ato = st.text_input("Ato:")
+                    doc_publicacao = st.text_input("Doc. Publicação:")
+                    sp_adicao = st.text_input("SP da Adição:")
+                    processo_rr = st.text_input("Processo RR:")
+                with c2:
+                    suplemento_pessoal_num_ano = st.text_input(
+                        "Suplemento de Pessoal nº/Ano:"
+                    )
+                    data_suplemento_pessoal = st.date_input(
+                        "Data Suplemento de Pessoal:", value=None
+                    )
+                    hoje_data = st.date_input("Hoje:", value=None)
+                    obs = st.text_area("OBS:")
+
+            st.markdown("---")
+            btn_salvar = st.form_submit_button(
+                "💾 Salvar Registro Completo na Planilha"
+            )
+
+        # --- LÓGICA DE GRAVAÇÃO NO GOOGLE SHEETS VIA GSPREAD ---
         if btn_salvar:
-            if not nome:
-                st.warning("⚠️ Preencha o nome do militar antes de salvar.")
+            if not nome and not matricula:
+                st.warning(
+                    "⚠️ Preencha ao menos o Nome ou a Matrícula do militar antes de salvar."
+                )
             else:
                 try:
                     client = get_gspread_client()
                     sheet = client.open_by_key(SHEET_ID).sheet1
 
-                    nova_linha = [nome, posto, movimentacao, observacao]
-                    sheet.append_row(nova_linha)
+                    # Lista completa dos 50 campos organizados em ordem de envio
+                    nova_linha = [
+                        posto_grad,
+                        ome_qod,
+                        atividade,
+                        ome,
+                        str(data_mov_sp) if data_mov_sp else "",
+                        municipio,
+                        regiao,
+                        obs,
+                        afastamentos_sup_90,
+                        orgao,
+                        num_funcional,
+                        matricula,
+                        nome,
+                        nome_guerra,
+                        ome_anterior,
+                        (
+                            str(data_chegada_obm_anterior)
+                            if data_chegada_obm_anterior
+                            else ""
+                        ),
+                        onus_origem,
+                        poder,
+                        str(inicio_cessao) if inicio_cessao else "",
+                        ato,
+                        doc_publicacao,
+                        sp_adicao,
+                        renovacao_cessao_atos,
+                        doe_bgsds_renovacao,
+                        num_ident,
+                        cpf_ponto,
+                        cpf,
+                        sexo,
+                        raca_cor,
+                        ano_ingresso,
+                        str(data_praca) if data_praca else "",
+                        tempo_servico_anos,
+                        tempo_servico_amd,
+                        tempo_servico_dias,
+                        str(data_ult_promocao) if data_ult_promocao else "",
+                        principio_ult_promocao,
+                        tempo_posto_atual_dias,
+                        sei_deslig,
+                        tempo_obm_atual,
+                        str(hoje_data) if hoje_data else "",
+                        somatorio_ltip_anos,
+                        somatorio_ltip_amd,
+                        somatorio_ltip_dias,
+                        total_dias_ltip_posto,
+                        str(inicio_ltip) if inicio_ltip else "",
+                        str(termino_ltip) if termino_ltip else "",
+                        movimentado,
+                        suplemento_pessoal_num_ano,
+                        (
+                            str(data_suplemento_pessoal)
+                            if data_suplemento_pessoal
+                            else ""
+                        ),
+                        fones,
+                    ]
 
-                    st.success("✅ Registro inserido com sucesso!")
+                    sheet.append_row(nova_linha)
+                    st.success("✅ Registro cadastrado com sucesso!")
                     st.cache_data.clear()
                     st.rerun()
+
                 except Exception as err_grava:
-                    st.error(f"Erro ao gravar registro na planilha: {err_grava}")
+                    st.error(
+                        f"Erro ao gravar registro no Google Sheets: {err_grava}"
+                    )
 
     st.markdown("---")
 
