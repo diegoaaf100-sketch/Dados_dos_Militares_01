@@ -118,7 +118,7 @@ try:
     # ==============================================================================
     # 2. FORMULÁRIO DE CADASTRO DE NOVOS REGISTROS (50 CAMPOS)
     # ==============================================================================
-    with st.expander("➕ **Cadastrar Novo Registro na Planilha**", expanded=False):
+    with st.expander("➕ **Cadastrar Novo Militar**", expanded=False):
         with st.form("novo_registro_militar_form", clear_on_submit=True):
 
             tab_pessoal, tab_lotacao, tab_cessao, tab_ltip, tab_outros = st.tabs([
