@@ -267,89 +267,73 @@ try:
                 "💾 Salvar Registro Completo na Planilha"
             )
 
-       # --- LÓGICA DE GRAVAÇÃO COM DIAGNÓSTICO DETALHADO ---
-        if btn_salvar:
-            if not nome and not matricula:
-                st.warning(
-                    "⚠️ Preencha ao menos o Nome ou a Matrícula do militar antes de salvar."
+       # ==============================================================================
+    # 🗑️ SEÇÃO DE EXCLUSÃO DE REGISTROS
+    # ==============================================================================
+    with st.expander("🗑️ **Excluir Registro da Planilha**", expanded=False):
+        st.warning(
+            "⚠️ **Atenção:** A exclusão removerá o registro diretamente da planilha do Google Sheets e não poderá ser desfeita."
+        )
+
+        # Seleção do militar a ser removido (usando Matrícula + Nome)
+        if "Matrícula" in df.columns and "Nome" in df.columns:
+            # Lista de opções formatadas
+            opcoes_militares = df.apply(
+                lambda r: f"{r['Matrícula']} - {r['Nome']}", axis=1
+            ).tolist()
+            militar_selecionado = st.selectbox(
+                "Selecione o militar que deseja excluir:",
+                [""] + opcoes_militares,
+            )
+
+            if militar_selecionado:
+                # Extrai a matrícula selecionada
+                matricula_alvo = militar_selecionado.split(" - ")[0].strip()
+
+                # Exibe prévia do registro a ser excluído
+                registro_alvo = df[
+                    df["Matrícula"].astype(str) == matricula_alvo
+                ]
+                st.write("**Dados do registro selecionado:**")
+                st.dataframe(registro_alvo, use_container_width=True)
+
+                # Botão de confirmação com chave única
+                confirmar = st.checkbox(
+                    "Confirmo que desejo excluir permanentemente este registro."
                 )
-            else:
-                try:
-                    client = get_gspread_client()
-                    sheet = client.open_by_key(SHEET_ID).sheet1
+                btn_excluir = st.button(
+                    "🔴 Excluir Registro", type="primary", disabled=not confirmar
+                )
 
-                    def formatar_valor(val):
-                        if val is None:
-                            return ""
-                        return str(val).strip()
+                if btn_excluir:
+                    try:
+                        client = get_gspread_client()
+                        sheet = client.open_by_key(SHEET_ID).sheet1
 
-                    nova_linha = [
-                        formatar_valor(posto_grad),
-                        formatar_valor(ome_qod),
-                        formatar_valor(atividade),
-                        formatar_valor(ome),
-                        formatar_valor(data_mov_sp),
-                        formatar_valor(municipio),
-                        formatar_valor(regiao),
-                        formatar_valor(obs),
-                        formatar_valor(afastamentos_sup_90),
-                        formatar_valor(orgao),
-                        formatar_valor(num_funcional),
-                        formatar_valor(matricula),
-                        formatar_valor(nome),
-                        formatar_valor(nome_guerra),
-                        formatar_valor(ome_anterior),
-                        formatar_valor(data_chegada_obm_anterior),
-                        formatar_valor(onus_origem),
-                        formatar_valor(poder),
-                        formatar_valor(inicio_cessao),
-                        formatar_valor(ato),
-                        formatar_valor(doc_publicacao),
-                        formatar_valor(sp_adicao),
-                        formatar_valor(renovacao_cessao_atos),
-                        formatar_valor(doe_bgsds_renovacao),
-                        formatar_valor(num_ident),
-                        formatar_valor(cpf_ponto),
-                        formatar_valor(cpf),
-                        formatar_valor(sexo),
-                        formatar_valor(raca_cor),
-                        formatar_valor(ano_ingresso),
-                        formatar_valor(data_praca),
-                        formatar_valor(tempo_servico_anos),
-                        formatar_valor(tempo_servico_amd),
-                        formatar_valor(tempo_servico_dias),
-                        formatar_valor(data_ult_promocao),
-                        formatar_valor(principio_ult_promocao),
-                        formatar_valor(tempo_posto_atual_dias),
-                        formatar_valor(sei_deslig),
-                        formatar_valor(tempo_obm_atual),
-                        formatar_valor(hoje_data),
-                        formatar_valor(somatorio_ltip_anos),
-                        formatar_valor(somatorio_ltip_amd),
-                        formatar_valor(somatorio_ltip_dias),
-                        formatar_valor(total_dias_ltip_posto),
-                        formatar_valor(inicio_ltip),
-                        formatar_valor(termino_ltip),
-                        formatar_valor(movimentado),
-                        formatar_valor(suplemento_pessoal_num_ano),
-                        formatar_valor(data_suplemento_pessoal),
-                        formatar_valor(fones),
-                    ]
+                        # Localiza a célula que contém a matrícula na planilha
+                        cell = sheet.find(matricula_alvo)
 
-                    # Envia para a planilha
-                    sheet.append_row(
-                        nova_linha, value_input_option="USER_ENTERED"
-                    )
+                        if cell:
+                            # Deleta a linha exata encontrada no Google Sheets
+                            sheet.delete_rows(cell.row)
+                            st.success(
+                                f"✅ Registro da Matrícula **{matricula_alvo}** excluído com sucesso!"
+                            )
+                            st.cache_data.clear()
+                            st.rerun()
+                        else:
+                            st.error(
+                                f"❌ Matrícula {matricula_alvo} não foi localizada na planilha."
+                            )
 
-                    st.success("✅ Registro cadastrado com sucesso!")
-                    st.cache_data.clear()
-                    st.rerun()
-
-                except Exception as err_grava:
-                    import traceback
-
-                    st.error(f"❌ Erro ao gravar registro: {err_grava}")
-                    st.code(traceback.format_exc(), language="python")
+                    except Exception as err_exc:
+                        st.error(
+                            f"❌ Erro ao excluir registro no Google Sheets: {err_exc}"
+                        )
+        else:
+            st.info(
+                "As colunas 'Matrícula' e 'Nome' são necessárias para utilizar o seletor de exclusão."
+            )
 
     # ==============================================================================
     # 3. FILTROS E BUSCA POR TEXTO
