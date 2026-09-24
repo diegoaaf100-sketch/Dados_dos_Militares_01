@@ -364,8 +364,8 @@ try:
     # 4. MÉTRICAS, TABELA E GRÁFICOS
     # ==============================================================================
     m1, m2, m3 = st.columns(3)
-    m1.metric("Registros Filtrados", len(df_filtrado))
-    m2.metric("Total de Registros na Planilha", len(df))
+    m1.metric("Militares Filtrados", len(df_filtrado))
+    m2.metric("Total de Militares no Sistema", len(df))
     m3.metric(
         "% Exibido",
         f"{(len(df_filtrado) / len(df)) * 100:.1f}%" if len(df) > 0 else "0%",
