@@ -333,7 +333,7 @@ try:
                         fones,
                     ]
 
-                    sheet.append_row(nova_linha)
+                    sheet.append_row(nova_linha, value_input_option="USER_ENTERED")
                     st.success("✅ Registro cadastrado com sucesso!")
                     st.cache_data.clear()
                     st.rerun()
