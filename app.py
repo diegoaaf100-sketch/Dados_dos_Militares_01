@@ -1,26 +1,30 @@
-
+import gspread
+from google.oauth2.service_account import Credentials
 import pandas as pd
 import streamlit as st
 
-st.set_page_config(page_title="Dashboard Restrito", layout="wide")
+st.set_page_config(
+    page_title="DGP - Dados dos Militares", layout="wide"
+)
+
+# --- ESCOPOS PARA A API DO GOOGLE SHEETS ---
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+]
 
 
-# --- FUNÇÃO DE AUTENTICAÇÃO ---
+# --- FUNÇÃO DE AUTENTICAÇÃO DO USUÁRIO ---
 def check_password():
     """Valida usuário e senha comparando com o bloco [passwords] nos Secrets."""
 
     def password_entered():
-        # Remove espaços acidentais antes ou depois da digitação
         user = st.session_state.get("username", "").strip()
         pwd = st.session_state.get("password", "").strip()
-
-        # Busca o dicionário de senhas nos Secrets
         passwords_dict = st.secrets.get("passwords", {})
 
-        # Compara usuário e senha
         if user in passwords_dict and str(passwords_dict[user]) == pwd:
             st.session_state["password_correct"] = True
-            # Limpa credenciais da memória
             if "password" in st.session_state:
                 del st.session_state["password"]
             if "username" in st.session_state:
@@ -28,20 +32,16 @@ def check_password():
         else:
             st.session_state["password_correct"] = False
 
-    # Libera acesso se a sessão já estiver autenticada
     if st.session_state.get("password_correct", False):
         return True
 
-    # Renderiza a Interface de Login
     st.title("🔒 Acesso Restrito ao Dashboard")
-
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.text_input("Usuário", key="username")
         st.text_input("Senha", type="password", key="password")
         st.button("Entrar", on_click=password_entered)
 
-        # Exibe mensagem caso a autenticação falhe
         if "password_correct" in st.session_state and not st.session_state[
             "password_correct"
         ]:
@@ -50,64 +50,109 @@ def check_password():
     return False
 
 
-# Bloqueia a execução se não autenticado
+# Bloqueia a aplicação até a autenticação
 if not check_password():
     st.stop()
 
-# ==============================================================================
-# CÓDIGO DO DASHBOARD (Apenas executado após login aprovado)
-# ==============================================================================
 
+# --- FUNÇÃO DE AUTENTICAÇÃO COM O GOOGLE SHEETS (GSPREAD) ---
+def get_gspread_client():
+    """Autentica na API do Google usando o bloco [gcp_service_account] dos Secrets."""
+    credentials = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], scopes=SCOPES
+    )
+    return gspread.authorize(credentials)
+
+
+# --- BARRA LATERAL ---
 st.sidebar.success("Autenticado com sucesso!")
 if st.sidebar.button("🚪 Sair / Logout"):
     st.session_state["password_correct"] = False
     st.rerun()
 
-st.title("📊 Dashboard de Movimentações")
-st.markdown("---")
-
-
-# --- CENTRALIZANDO E APROXIMANDO AS IMAGENS ---
-# Criamos 4 colunas: [Espaço Esquerdo, Imagem 1, Imagem 2, Espaço Direito]
-# Os valores controlam a proporção de largura de cada coluna
+# --- CABEÇALHO E LOGOS ---
 _, col_img1, col_img2, _ = st.columns([2, 1, 1, 2])
-
 with col_img1:
     st.image("images.png", width=140)
-
 with col_img2:
     st.image("11679.png", width=140)
 
-st.markdown("<h1 style='text-align: center;'>📊 DGP - Dados dos Militares</h1>", unsafe_allow_html=True)
+st.markdown(
+    "<h1 style='text-align: center;'>📊 DGP - Dados dos Militares</h1>",
+    unsafe_allow_html=True,
+)
 st.markdown("---")
 
 
+# --- FUNÇÃO DE CARREGAMENTO DOS DADOS ---
 @st.cache_data(ttl=5)
 def load_data(sheet_id):
     url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-
-    # header=6 indica que os nomes das colunas estão na Linha 7 do Google Sheets
     df = pd.read_csv(url, header=8)
-
-    # Limpeza dos nomes das colunas (remove espaços e dois-pontos)
     df.columns = [
         str(col).strip().replace(":", "-") for col in df.columns
     ]
-
-    # Preenche células vazias com hífen
     df = df.fillna("-")
-
     return df
 
-# --- INSIRA O ID DA SUA PLANILHA ABAIXO ---
-SHEET_ID = st.secrets["SHEET_ID"]
 
 try:
+    SHEET_ID = st.secrets["SHEET_ID"]
+
     # Botão de atualização manual na barra lateral
     if st.sidebar.button("🔄 Forçar Atualização"):
         st.cache_data.clear()
         st.rerun()
 
+    # ==============================================================================
+    # ➕ FORMULÁRIO DE CADASTRO DE NOVOS REGISTROS
+    # ==============================================================================
+    with st.expander("➕ **Cadastrar Novo Registro na Planilha**", expanded=False):
+        with st.form("novo_registro_form", clear_on_submit=True):
+            c1, c2 = st.columns(2)
+
+            with c1:
+                nome = st.text_input("Nome / Militar")
+                posto = st.selectbox(
+                    "Posto/Graduação",
+                    ["Soldado", "Cabo", "Sargento", "Tenente", "Capitão"],
+                )
+
+            with c2:
+                movimentacao = st.selectbox(
+                    "Tipo de Movimentação",
+                    ["Entrada", "Saída", "Transferência"],
+                )
+                observacao = st.text_area("Observações")
+
+            btn_salvar = st.form_submit_button("💾 Salvar Registro na Planilha")
+
+        if btn_salvar:
+            if not nome:
+                st.warning("⚠️ Preencha o nome do militar antes de salvar.")
+            else:
+                try:
+                    # Conecta via gspread e grava a nova linha
+                    client = get_gspread_client()
+                    sheet = client.open_by_key(SHEET_ID).sheet1
+
+                    nova_linha = [nome, posto, movimentacao, observacao]
+                    sheet.append_row(nova_linha)
+
+                    st.success("✅ Registro inserido com sucesso!")
+
+                    # Limpa o cache para renderizar a tabela atualizada
+                    st.cache_data.clear()
+                    st.rerun()
+
+                except Exception as err_grava:
+                    st.error(f"Erro ao gravar registro na planilha: {err_grava}")
+
+    st.markdown("---")
+
+    # ==============================================================================
+    # 🔍 LEITURA, FILTROS E EXIBIÇÃO DE DADOS
+    # ==============================================================================
     df = load_data(SHEET_ID)
 
     # --- BARRA DE BUSCA DIGITADA ---
@@ -164,8 +209,13 @@ try:
     coluna_grafico = st.selectbox(
         "Escolha a coluna para o gráfico:", list(df.columns)
     )
+
     if len(df_filtrado) > 0:
         st.bar_chart(df_filtrado[coluna_grafico].value_counts())
+    else:
+        st.warning("⚠️ Nenhum registro encontrado para gerar o gráfico.")
 
+except KeyError as err_key:
+    st.error(f"❌ Chave ausente nos Secrets: {err_key}")
 except Exception as e:
     st.error(f"Erro ao carregar ou processar os dados: {e}")
