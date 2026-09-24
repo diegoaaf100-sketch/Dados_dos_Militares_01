@@ -104,21 +104,16 @@ try:
     # 1. CARREGAMENTO INICIAL DO DATAFRAME
     # ==============================================================================
     df = load_data(SHEET_ID)
+    df_filtrado = df.copy()
 
     # ==============================================================================
     # 🕵️ PAINEL DE DIAGNÓSTICO: CONFERÊNCIA DAS COLUNAS
     # ==============================================================================
     with st.expander("🔍 **Clique para Conferir a Ordem Exata das Colunas da Planilha**", expanded=False):
         colunas_planilha = list(df.columns)
-        
         st.write(f"**Total de colunas encontradas:** {len(colunas_planilha)}")
-        
-        # Exibe em formato numerado para facilitar o bate com a lista nova_linha
         for idx, col in enumerate(colunas_planilha, start=1):
             st.text(f"Coluna {idx}: {col}")
-
-    # Criação imediata do df_filtrado como cópia do df original
-    df_filtrado = df.copy()
 
     # ==============================================================================
     # 2. FORMULÁRIO DE CADASTRO DE NOVOS REGISTROS (50 CAMPOS)
@@ -283,13 +278,11 @@ try:
                     client = get_gspread_client()
                     sheet = client.open_by_key(SHEET_ID).sheet1
 
-                    # Função auxiliar para garantir que todo valor seja string ou número simples
                     def formatar_valor(val):
                         if val is None:
                             return ""
                         return str(val).strip()
 
-                    # Montagem da lista tratando todos os valores
                     nova_linha = [
                         formatar_valor(posto_grad),
                         formatar_valor(ome_qod),
@@ -343,7 +336,6 @@ try:
                         formatar_valor(fones),
                     ]
 
-                    # Envia forçando interpretação correta no Google Sheets
                     sheet.append_row(
                         nova_linha, value_input_option="USER_ENTERED"
                     )
@@ -423,8 +415,3 @@ except KeyError as err_key:
     st.error(f"❌ Chave ausente nos Secrets: {err_key}")
 except Exception as e:
     st.error(f"Erro ao carregar ou processar os dados: {e}")
-
-
-
-        for idx, col in enumerate(colunas_planilha, start=1):
-            st.text(f"Coluna {idx}: {col}")
