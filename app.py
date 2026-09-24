@@ -105,6 +105,18 @@ try:
     # ==============================================================================
     df = load_data(SHEET_ID)
 
+    # ==============================================================================
+    # 🕵️ PAINEL DE DIAGNÓSTICO: CONFERÊNCIA DAS COLUNAS
+    # ==============================================================================
+    with st.expander("🔍 **Clique para Conferir a Ordem Exata das Colunas da Planilha**", expanded=False):
+        colunas_planilha = list(df.columns)
+        
+        st.write(f"**Total de colunas encontradas:** {len(colunas_planilha)}")
+        
+        # Exibe em formato numerado para facilitar o bate com a lista nova_linha
+        for idx, col in enumerate(colunas_planilha, start=1):
+            st.text(f"Coluna {idx}: {col}")
+
     # Criação imediata do df_filtrado como cópia do df original
     df_filtrado = df.copy()
 
