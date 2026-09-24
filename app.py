@@ -411,3 +411,16 @@ except KeyError as err_key:
     st.error(f"❌ Chave ausente nos Secrets: {err_key}")
 except Exception as e:
     st.error(f"Erro ao carregar ou processar os dados: {e}")
+
+
+# ==============================================================================
+    # 🕵️ PAINEL DE DIAGNÓSTICO: CONFERÊNCIA DAS COLUNAS
+    # ==============================================================================
+    with st.expander("🔍 **Clique para Conferir a Ordem Exata das Colunas da Planilha**", expanded=False):
+        colunas_planilha = list(df.columns)
+        
+        st.write(f"**Total de colunas encontradas:** {len(colunas_planilha)}")
+        
+        # Exibe em formato numerado para facilitar o bate com a lista nova_linha
+        for idx, col in enumerate(colunas_planilha, start=1):
+            st.text(f"Coluna {idx}: {col}")
