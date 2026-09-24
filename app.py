@@ -80,7 +80,7 @@ with col_img2:
     st.image("11679.png", width=140)
 
 st.markdown(
-    "<h1 style='text-align: center;'>📊 DGP - Dados dos Militares</h1>",
+    "<h1 style='text-align: center;'> DGP - Dados dos Militares</h1>",
     unsafe_allow_html=True,
 )
 st.markdown("---")
