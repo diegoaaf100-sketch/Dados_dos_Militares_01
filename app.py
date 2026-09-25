@@ -329,11 +329,21 @@ try:
             )
 
     # ==============================================================================
-    # 3. FILTROS E BUSCA POR TEXTO
+    # 4. FILTROS E BUSCA POR TEXTO
     # ==============================================================================
+
+    # Função callback para redefinir todas as seleções de filtro
+    def limpar_todos_os_filtros():
+        st.session_state["termo_busca_key"] = ""
+        for col in df.columns:
+            chave_filtro = f"filtro_{col}"
+            st.session_state[chave_filtro] = "Todos"
+
     st.subheader("🔍 Busca por Texto")
     termo_busca = st.text_input(
-        "Digite algo para pesquisar na planilha inteira:", ""
+        "Digite algo para pesquisar na planilha inteira:",
+        value="",
+        key="termo_busca_key",
     )
 
     if termo_busca:
@@ -345,16 +355,30 @@ try:
     # --- FILTROS LATERAIS ---
     st.sidebar.header("🎛️ Filtros por Coluna")
 
-    if st.sidebar.button("🧹 Limpar Filtros"):
-        st.rerun()
+    # Botão de reset com gatilho no evento on_click
+    st.sidebar.button(
+        "🧹 Limpar Filtros",
+        on_click=limpar_todos_os_filtros,
+        use_container_width=True,
+    )
 
     for coluna in df.columns:
+        chave_filtro = f"filtro_{coluna}"
+
+        # Inicializa a chave no session_state caso ainda não exista
+        if chave_filtro not in st.session_state:
+            st.session_state[chave_filtro] = "Todos"
+
         valores_unicos = df[coluna].dropna().astype(str).unique().tolist()
         valores_unicos.sort()
-
         opcoes = ["Todos"] + valores_unicos
-        escolha = st.sidebar.selectbox(f"{coluna}:", opcoes, key=coluna)
 
+        # Seletor usando a chave prefixada do session_state
+        escolha = st.sidebar.selectbox(
+            f"{coluna}:", opcoes, key=chave_filtro
+        )
+
+        # Aplica o filtro na tabela caso não seja 'Todos'
         if escolha != "Todos":
             df_filtrado = df_filtrado[
                 df_filtrado[coluna].astype(str) == escolha
