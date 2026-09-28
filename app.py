@@ -107,95 +107,65 @@ try:
     # ==============================================================================
     # 2. FORMULÁRIO DE CADASTRO DE NOVOS REGISTROS
     # ==============================================================================
-    if btn_salvar:
-    if not matricula.strip():
-        st.error("❌ O campo **Matrícula** é obrigatório para cadastrar um novo militar.")
-    else:
-        try:
-            with st.spinner("Conectando ao Google Sheets e salvando..."):
-                client = get_gspread_client()
-                
-                # Tenta abrir a planilha pela chave
-                spreadsheet = client.open_by_key(SHEET_ID)
-                sheet = spreadsheet.sheet1  # ou spreadsheet.worksheet("NomeDaAba")
+    with st.expander("➕ **Cadastrar Novo Militar**", expanded=False):
+        with st.form("form_novo_militar", clear_on_submit=False):
+            tab_pessoal, tab_lotacao, tab_cessao, tab_ltip, tab_outros = st.tabs([
+                "👤 Identificação & Pessoal",
+                "🏢 Lotação & Promoção",
+                "🔄 Cessão & Movimentação",
+                "⏳ LTIP & Afastamentos",
+                "📝 Documentos & Observações",
+            ])
 
-                # Obtém os cabeçalhos reais da linha 1
-                headers = sheet.row_values(1)
-                
-                if not headers:
-                    st.error("❌ A planilha parece estar vazia ou a linha 1 de cabeçalho não foi encontrada.")
-                    st.stop()
+            # --- ABA 1: IDENTIFICAÇÃO PESSOAL ---
+            with tab_pessoal:
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    num_funcional = st.text_input("nº Funcional:")
+                    matricula = st.text_input("Matrícula *:")
+                    cpf_ponto = st.text_input("CPF.:")
+                    cpf = st.text_input("CPF:")
+                    num_ident = st.text_input("Nº IDENT.:")
+                with c2:
+                    nome = st.text_input("Nome:")
+                    nome_guerra = st.text_input("Nome de Guerra:")
+                    sexo = st.selectbox("SEXO:", ["", "MASCULINO", "FEMININO"])
+                    raca_cor = st.selectbox(
+                        "Raça/Cor:",
+                        ["", "BRANCA", "PRETA", "PARDA", "AMARELA", "INDÍGENA"],
+                    )
+                with c3:
+                    posto_grad = st.text_input("Posto/ Grad:")
+                    fones = st.text_input("Fones:")
+                    ano_ingresso = st.text_input("Ano de ingresso:")
+                    data_praca = st.date_input("Data de praça:", value=None)
 
-                novo_registro_map = {
-                    "nº Funcional": num_funcional,
-                    "Matrícula": matricula,
-                    "CPF.": cpf_ponto,
-                    "CPF": cpf,
-                    "Nº IDENT.": num_ident,
-                    "Nome": nome,
-                    "Nome de Guerra": nome_guerra,
-                    "SEXO": sexo,
-                    "Raça/Cor": raca_cor,
-                    "Posto/ Grad": posto_grad,
-                    "Fones": fones,
-                    "Ano de ingresso": ano_ingresso,
-                    "Data de praça": str(data_praca) if data_praca else "",
-                    "OME": ome,
-                    "OME QOD": ome_qod,
-                    "Atividade": atividade,
-                    "Município": municipio,
-                    "Região": regiao,
-                    "Tempo de serviço (anos)": tempo_servico_anos,
-                    "Tempo de serviço (ano, mês, dias)": tempo_servico_amd,
-                    "Tempo de serviço (dias)": tempo_servico_dias,
-                    "Tempo na OBM atual": tempo_obm_atual,
-                    "Data da última promoção ou Implant. PCNH": str(data_ult_promocao) if data_ult_promocao else "",
-                    "Princípio da última promoção": principio_ult_promocao,
-                    "Tempo no Posto/Grad. atual EM DIAS": tempo_posto_atual_dias,
-                    "Data da Movimentação em SP": str(data_mov_sp) if data_mov_sp else "",
-                    "OME ANTERIOR AO ÚLTIMO SP PUBLICADO": ome_anterior,
-                    "Data de chegada na OBM Anteior": str(data_chegada_obm_anterior) if data_chegada_obm_anterior else "",
-                    "Movimentado (apagar antes de atualizar o SP)": movimentado,
-                    "ÓRGÃO": orgao,
-                    "Poder": poder,
-                    "Ônus para Origem": onus_origem,
-                    "Início da Cessão ou requisição": str(inicio_cessao) if inicio_cessao else "",
-                    "Renovação de cessão - Atos/Portarias/Documentos": renovacao_cessao_atos,
-                    "DOE/BGSDS de renovação": doe_bgsds_renovacao,
-                    "SEI deslig.": sei_deslig,
-                    "Processo RR e AFASTAMENTOS SUP. A 90 DIAS ININTERRUPTOS, PUBLICADOS EM SP": afastamentos_sup_90,
-                    "INÍCIO DA LTIP": str(inicio_ltip) if inicio_ltip else "",
-                    "TÉRMINO DA LTIP (inserir data de apresentação)": str(termino_ltip) if termino_ltip else "",
-                    "Somatório LTIP gozada em anos": somatorio_ltip_anos,
-                    "Somatório LTIP gozada em anos/meses/dias": somatorio_ltip_amd,
-                    "Somatório de todas LTIP gozadas em dias": somatorio_ltip_dias,
-                    "TOTAL DIAS EM LTIP no MESMO Posto/Grad.": total_dias_ltip_posto,
-                    "Ato": ato,
-                    "Doc. Publicação": doc_publicacao,
-                    "SP da Adição": sp_adicao,
-                    "Processo RR": processo_rr,
-                    "Suplemento de Pessoal nº/Ano": suplemento_pessoal_num_ano,
-                    "Data Suplemento de Pessoal": str(data_suplemento_pessoal) if data_suplemento_pessoal else "",
-                    "Hoje": str(hoje_data) if hoje_data else "",
-                    "OBS": obs,
-                }
-
-                # Monta a linha baseada na ordem exata das colunas na planilha
-                linha_para_inserir = [
-                    str(novo_registro_map.get(col_h, "")) for col_h in headers
-                ]
-
-                # Executa a inserção
-                sheet.append_row(linha_para_inserir, value_input_option="USER_ENTERED")
-                
-                st.success(f"✅ Registro do militar **{nome}** (Matrícula: {matricula}) inserido com sucesso!")
-                st.cache_data.clear()
-
-        except gspread.exceptions.APIError as api_err:
-            st.error(f"❌ Erro da API do Google Sheets: {api_err}")
-            st.json(api_err.response.json()) # Exibe a mensagem de erro exata retornada pelo Google
-        except Exception as err_add:
-            st.error(f"❌ Erro ao adicionar novo registro: {type(err_add).__name__} - {err_add}")
+            # --- ABA 2: LOTAÇÃO & PROMOÇÃO ---
+            with tab_lotacao:
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    ome = st.text_input("OME:")
+                    ome_qod = st.text_input("OME QOD:")
+                    atividade = st.text_input("Atividade:")
+                    municipio = st.text_input("Município:")
+                    regiao = st.text_input("Região:")
+                with c2:
+                    tempo_servico_anos = st.text_input("Tempo de serviço (anos):")
+                    tempo_servico_amd = st.text_input(
+                        "Tempo de serviço (ano, mês, dias):"
+                    )
+                    tempo_servico_dias = st.text_input("Tempo de serviço (dias):")
+                    tempo_obm_atual = st.text_input("Tempo na OBM atual:")
+                with c3:
+                    data_ult_promocao = st.date_input(
+                        "Data da última promoção ou Implant. PCNH:", value=None
+                    )
+                    principio_ult_promocao = st.text_input(
+                        "Princípio da última promoção:"
+                    )
+                    tempo_posto_atual_dias = st.text_input(
+                        "Tempo no Posto/Grad. atual EM DIAS:"
+                    )
 
             # --- ABA 3: CESSÃO & MOVIMENTAÇÃO ---
             with tab_cessao:
@@ -276,32 +246,22 @@ try:
                     hoje_data = st.date_input("Hoje:", value=None)
                     obs = st.text_area("OBS:")
 
-            st.markdown("---")
-           if btn_salvar:
-    st.write("🔄 Iniciando processo de salvamento...") # Mensagem de teste
-    
-    try:
-        client = get_gspread_client()
-        sheet = client.open_by_key(SHEET_ID).sheet1
-        
-        # Insere os dados
-        sheet.append_row(linha_para_inserir, value_input_option="USER_ENTERED")
-        
-        st.success("✅ Gravado na planilha do Google Sheets!")
-    except Exception as err:
-        st.error(f"❌ Falha ao salvar: {err}")
-            btn_salvar = st.form_submit_button(
-                "💾 Salvar Registro Completo na Planilha"
-            )
+            btn_salvar = st.form_submit_button("💾 Salvar Registro Completo na Planilha")
 
-            if btn_salvar:
-                if not matricula.strip():
-                    st.error("❌ O campo **Matrícula** é obrigatório para cadastrar um novo militar.")
-                else:
-                    try:
+        if btn_salvar:
+            if not matricula.strip():
+                st.error("❌ O campo **Matrícula** é obrigatório para cadastrar um novo militar.")
+            else:
+                try:
+                    with st.spinner("Conectando ao Google Sheets e salvando..."):
                         client = get_gspread_client()
-                        sheet = client.open_by_key(SHEET_ID).(Página1)
+                        spreadsheet = client.open_by_key(SHEET_ID)
+                        sheet = spreadsheet.sheet1
+
                         headers = sheet.row_values(1)
+                        if not headers:
+                            st.error("❌ A planilha parece estar vazia ou a linha 1 de cabeçalho não foi encontrada.")
+                            st.stop()
 
                         novo_registro_map = {
                             "nº Funcional": num_funcional,
@@ -361,13 +321,15 @@ try:
                             str(novo_registro_map.get(col_h, "")) for col_h in headers
                         ]
 
-                        sheet.append_row(linha_para_inserir)
+                        sheet.append_row(linha_para_inserir, value_input_option="USER_ENTERED")
                         st.success(f"✅ Registro do militar **{nome}** (Matrícula: {matricula}) inserido com sucesso!")
                         st.cache_data.clear()
                         st.rerun()
 
-                    except Exception as err_add:
-                        st.error(f"❌ Erro ao adicionar novo registro na planilha: {err_add}")
+                except gspread.exceptions.APIError as api_err:
+                    st.error(f"❌ Erro da API do Google Sheets: {api_err}")
+                except Exception as err_add:
+                    st.error(f"❌ Erro ao adicionar novo registro: {err_add}")
 
     # ==============================================================================
     # 3. SEÇÃO DE EXCLUSÃO DE REGISTROS
@@ -388,10 +350,8 @@ try:
 
             if militar_selecionado:
                 matricula_alvo = militar_selecionado.split(" - ")[0].strip()
+                registro_alvo = df[df["Matrícula"].astype(str) == matricula_alvo]
 
-                registro_alvo = df[
-                    df["Matrícula"].astype(str) == matricula_alvo
-                ]
                 st.write("**Dados do registro selecionado:**")
                 st.dataframe(registro_alvo, use_container_width=True)
 
@@ -405,7 +365,7 @@ try:
                 if btn_excluir:
                     try:
                         client = get_gspread_client()
-                        sheet = client.open_by_key(SHEET_ID).(Página1)
+                        sheet = client.open_by_key(SHEET_ID).sheet1
                         cell = sheet.find(matricula_alvo)
 
                         if cell:
@@ -421,13 +381,9 @@ try:
                             )
 
                     except Exception as err_exc:
-                        st.error(
-                            f"❌ Erro ao excluir registro no Google Sheets: {err_exc}"
-                        )
+                        st.error(f"❌ Erro ao excluir registro no Google Sheets: {err_exc}")
         else:
-            st.info(
-                "As colunas 'Matrícula' e 'Nome' são necessárias para utilizar o seletor de exclusão."
-            )
+            st.info("As colunas 'Matrícula' e 'Nome' são necessárias para utilizar o seletor de exclusão.")
 
     # ==============================================================================
     # 4. SEÇÃO DE EDIÇÃO DE REGISTROS
@@ -561,7 +517,7 @@ try:
                     if btn_atualizar:
                         try:
                             client = get_gspread_client()
-                            sheet = client.open_by_key(SHEET_ID).(Página1)
+                            sheet = client.open_by_key(SHEET_ID).sheet1
                             cell = sheet.find(matricula_editar)
 
                             if cell:
@@ -626,63 +582,20 @@ try:
                                     str(novos_dados_map.get(col_h, "")) for col_h in headers
                                 ]
 
-                                # Atualiza toda a linha correspondente de uma só vez no Google Sheets
+                                # Atualiza o intervalo da linha inteira (ex: A2:AY2)
                                 sheet.update(f"A{row_idx}", [linha_atualizada])
-
-                                st.success(f"✅ Dados do militar **{e_nome}** atualizados com sucesso!")
+                                st.success(f"✅ Registro da Matrícula **{matricula_editar}** atualizado com sucesso!")
                                 st.cache_data.clear()
                                 st.rerun()
-
                             else:
-                                st.error(f"❌ Matrícula {matricula_editar} não foi encontrada na planilha.")
+                                st.error("❌ Registro não localizado para atualização.")
 
-                        except Exception as err_edit:
-                            st.error(f"❌ Erro ao atualizar o registro no Google Sheets: {err_edit}")
-
+                        except Exception as err_update:
+                            st.error(f"❌ Erro ao atualizar registro: {err_update}")
         else:
             st.info("As colunas 'Matrícula' e 'Nome' são necessárias para utilizar o seletor de edição.")
 
-    # ==============================================================================
-    # 5. VISUALIZAÇÃO E FILTROS DA TABELA DE MILITARES
-    # ==============================================================================
-    st.markdown("---")
-    st.subheader("📊 **Consulta de Militares Cadastrados**")
-
-    # Filtros Rápidos
-    col_f1, col_f2, col_f3 = st.columns(3)
-
-    with col_f1:
-        busca_nome = st.text_input("🔍 Buscar por Nome ou Matrícula:")
-    with col_f2:
-        if "OME" in df.columns:
-            omes_unicas = ["Todas"] + sorted([str(x) for x in df["OME"].unique() if str(x) != "-"])
-            filtro_ome = st.selectbox("Filtrar por OME:", omes_unicas)
-        else:
-            filtro_ome = "Todas"
-    with col_f3:
-        if "Posto/ Grad" in df.columns:
-            postos_unicos = ["Todos"] + sorted([str(x) for x in df["Posto/ Grad"].unique() if str(x) != "-"])
-            filtro_posto = st.selectbox("Filtrar por Posto/Graduação:", postos_unicos)
-        else:
-            filtro_posto = "Todos"
-
-    # Aplicação dos Filtros no Dataframe
-    df_exibicao = df.copy()
-
-    if busca_nome:
-        mask_nome = df_exibicao["Nome"].astype(str).str.contains(busca_nome, case=False, na=False) if "Nome" in df_exibicao.columns else False
-        mask_mat = df_exibicao["Matrícula"].astype(str).str.contains(busca_nome, case=False, na=False) if "Matrícula" in df_exibicao.columns else False
-        df_exibicao = df_exibicao[mask_nome | mask_mat]
-
-    if filtro_ome != "Todas" and "OME" in df_exibicao.columns:
-        df_exibicao = df_exibicao[df_exibicao["OME"].astype(str) == filtro_ome]
-
-    if filtro_posto != "Todos" and "Posto/ Grad" in df_exibicao.columns:
-        df_exibicao = df_exibicao[df_exibicao["Posto/ Grad"].astype(str) == filtro_posto]
-
-    # Exibição do total e tabela
-    st.caption(f"Exibindo **{len(df_exibicao)}** de **{len(df)}** registros.")
-    st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
-
+except KeyError as key_err:
+    st.error(f"❌ Chave de segredo não encontrada no `secrets.toml`: {key_err}")
 except Exception as e:
-    st.error(f"❌ Ocorreu um erro ao carregar o aplicativo: {e}")
+    st.error(f"❌ Ocorreu um erro geral na aplicação: {e}")
