@@ -277,6 +277,19 @@ try:
                     obs = st.text_area("OBS:")
 
             st.markdown("---")
+           if btn_salvar:
+    st.write("🔄 Iniciando processo de salvamento...") # Mensagem de teste
+    
+    try:
+        client = get_gspread_client()
+        sheet = client.open_by_key(SHEET_ID).sheet1
+        
+        # Insere os dados
+        sheet.append_row(linha_para_inserir, value_input_option="USER_ENTERED")
+        
+        st.success("✅ Gravado na planilha do Google Sheets!")
+    except Exception as err:
+        st.error(f"❌ Falha ao salvar: {err}")
             btn_salvar = st.form_submit_button(
                 "💾 Salvar Registro Completo na Planilha"
             )
