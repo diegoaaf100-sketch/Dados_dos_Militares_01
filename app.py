@@ -77,7 +77,7 @@ HEADERS_ESPERADOS = [
 
 
 # ============================================================
-# AUTENTICAÇÃO DO USUÁRIO
+# AUTENTICAÇÃO
 # ============================================================
 
 def check_password():
@@ -130,7 +130,9 @@ def check_password():
     ):
         return True
 
-    st.title("🔒 Acesso Restrito ao Dashboard")
+    st.title(
+        "🔒 Acesso Restrito ao Dashboard"
+    )
 
     col1, col2, col3 = st.columns(
         [1, 2, 1]
@@ -173,7 +175,7 @@ if not check_password():
 
 
 # ============================================================
-# GOOGLE SHEETS
+# CONEXÃO GOOGLE SHEETS
 # ============================================================
 
 def get_gspread_client():
@@ -211,89 +213,7 @@ def get_sheet():
 
 
 # ============================================================
-# LEITURA DIRETA DA PLANILHA
-# ============================================================
-
-@st.cache_data(ttl=5)
-def carregar_dados():
-
-    worksheet = get_sheet()
-
-    valores = worksheet.get_all_values()
-
-    if not valores:
-
-        return pd.DataFrame(
-            columns=HEADERS_ESPERADOS
-        )
-
-    cabecalhos = [
-        str(x).strip()
-        for x in valores[0]
-    ]
-
-    dados = valores[1:]
-
-    # --------------------------------------------------------
-    # Verificação de cabeçalhos duplicados
-    # --------------------------------------------------------
-
-    duplicados = [
-        x
-        for x in set(cabecalhos)
-        if cabecalhos.count(x) > 1
-    ]
-
-    if duplicados:
-
-        raise ValueError(
-            "Existem cabeçalhos duplicados na "
-            f"Página1: {duplicados}"
-        )
-
-    # --------------------------------------------------------
-    # Ajusta linhas para terem o mesmo tamanho
-    # --------------------------------------------------------
-
-    quantidade_colunas = len(
-        cabecalhos
-    )
-
-    linhas_corrigidas = []
-
-    for linha in dados:
-
-        linha = list(linha)
-
-        if len(linha) < quantidade_colunas:
-
-            linha += [
-                ""
-            ] * (
-                quantidade_colunas
-                - len(linha)
-            )
-
-        elif len(linha) > quantidade_colunas:
-
-            linha = linha[
-                :quantidade_colunas
-            ]
-
-        linhas_corrigidas.append(
-            linha
-        )
-
-    df = pd.DataFrame(
-        linhas_corrigidas,
-        columns=cabecalhos
-    )
-
-    return df
-
-
-# ============================================================
-# FUNÇÕES AUXILIARES
+# TEXTO
 # ============================================================
 
 def texto(valor):
@@ -321,7 +241,101 @@ def normalizar_matricula(valor):
     )
 
 
-def localizar_coluna(headers, nome):
+# ============================================================
+# CARREGAR DADOS
+# ============================================================
+
+@st.cache_data(ttl=5)
+def carregar_dados():
+
+    worksheet = get_sheet()
+
+    valores = worksheet.get_all_values()
+
+    if not valores:
+
+        return pd.DataFrame(
+            columns=HEADERS_ESPERADOS
+        )
+
+    cabecalhos_originais = [
+        str(x).strip()
+        for x in valores[0]
+    ]
+
+    # --------------------------------------------------------
+    # Cria nomes únicos para o DataFrame
+    # --------------------------------------------------------
+
+    contagem = {}
+    cabecalhos = []
+
+    for header in cabecalhos_originais:
+
+        if header not in contagem:
+
+            contagem[header] = 1
+
+            cabecalhos.append(
+                header
+            )
+
+        else:
+
+            contagem[header] += 1
+
+            cabecalhos.append(
+                f"{header} (duplicado {contagem[header]})"
+            )
+
+    dados = valores[1:]
+
+    quantidade_colunas = len(
+        cabecalhos
+    )
+
+    linhas_corrigidas = []
+
+    for linha in dados:
+
+        linha = list(linha)
+
+        if len(linha) < quantidade_colunas:
+
+            linha += (
+                [""] *
+                (
+                    quantidade_colunas
+                    - len(linha)
+                )
+            )
+
+        elif len(linha) > quantidade_colunas:
+
+            linha = linha[
+                :quantidade_colunas
+            ]
+
+        linhas_corrigidas.append(
+            linha
+        )
+
+    df = pd.DataFrame(
+        linhas_corrigidas,
+        columns=cabecalhos
+    )
+
+    return df
+
+
+# ============================================================
+# LOCALIZAR COLUNA
+# ============================================================
+
+def localizar_coluna(
+    headers,
+    nome
+):
 
     for i, header in enumerate(headers):
 
@@ -329,10 +343,15 @@ def localizar_coluna(headers, nome):
             str(header).strip()
             == nome
         ):
+
             return i + 1
 
     return None
 
+
+# ============================================================
+# LOCALIZAR LINHA PELA MATRÍCULA
+# ============================================================
 
 def localizar_linha_por_matricula(
     worksheet,
@@ -344,7 +363,10 @@ def localizar_linha_por_matricula(
     if not valores:
         return None
 
-    headers = valores[0]
+    headers = [
+        str(x).strip()
+        for x in valores[0]
+    ]
 
     coluna = localizar_coluna(
         headers,
@@ -389,6 +411,10 @@ def localizar_linha_por_matricula(
     return None
 
 
+# ============================================================
+# MONTAR LINHA
+# ============================================================
+
 def montar_linha(
     headers,
     dados
@@ -410,6 +436,10 @@ def montar_linha(
     return linha
 
 
+# ============================================================
+# VERIFICAR ESTRUTURA
+# ============================================================
+
 def verificar_estrutura(
     worksheet
 ):
@@ -426,18 +456,37 @@ def verificar_estrutura(
             "está vazia."
         )
 
-    duplicados = [
-        x
-        for x in set(headers)
-        if headers.count(x) > 1
-    ]
+    # --------------------------------------------------------
+    # Cabeçalhos duplicados
+    # --------------------------------------------------------
+
+    duplicados = []
+
+    for header in set(headers):
+
+        if headers.count(header) > 1:
+
+            duplicados.append(
+                header
+            )
 
     if duplicados:
 
         raise ValueError(
-            "Existem colunas duplicadas: "
-            f"{duplicados}"
+            "Existem cabeçalhos duplicados "
+            "na Página1:\n\n"
+            + "\n".join(
+                f"- {x}"
+                for x in duplicados
+            )
+            + "\n\n"
+            "Corrija esses nomes na primeira "
+            "linha da planilha antes de continuar."
         )
+
+    # --------------------------------------------------------
+    # Cabeçalhos faltantes
+    # --------------------------------------------------------
 
     faltantes = [
         x
@@ -460,7 +509,7 @@ def verificar_estrutura(
 
 
 # ============================================================
-# FORMULÁRIO
+# CAMPO DE TEXTO
 # ============================================================
 
 def campo_texto(
@@ -493,6 +542,10 @@ def campo_texto(
     )
 
 
+# ============================================================
+# FORMULÁRIO
+# ============================================================
+
 def criar_formulario(
     dados,
     prefixo
@@ -502,10 +555,6 @@ def criar_formulario(
         dados = {}
 
     resultado = {}
-
-    # ========================================================
-    # ABA 1
-    # ========================================================
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(
         [
@@ -518,7 +567,7 @@ def criar_formulario(
     )
 
     # ========================================================
-    # IDENTIFICAÇÃO
+    # ABA 1
     # ========================================================
 
     with tab1:
@@ -659,7 +708,7 @@ def criar_formulario(
             )
 
     # ========================================================
-    # LOTAÇÃO
+    # ABA 2
     # ========================================================
 
     with tab2:
@@ -771,7 +820,7 @@ def criar_formulario(
             )
 
     # ========================================================
-    # CESSÃO
+    # ABA 3
     # ========================================================
 
     with tab3:
@@ -898,7 +947,7 @@ def criar_formulario(
             )
 
     # ========================================================
-    # LTIP
+    # ABA 4
     # ========================================================
 
     with tab4:
@@ -974,7 +1023,7 @@ def criar_formulario(
             )
 
     # ========================================================
-    # DOCUMENTOS
+    # ABA 5
     # ========================================================
 
     with tab5:
@@ -1052,6 +1101,7 @@ st.sidebar.success(
     "Autenticado com sucesso!"
 )
 
+
 if st.sidebar.button(
     "🚪 Sair / Logout"
 ):
@@ -1080,24 +1130,32 @@ col1, col2, col3, col4 = st.columns(
     [2, 1, 1, 2]
 )
 
+
 with col2:
 
     try:
+
         st.image(
             "images.png",
             width=140
         )
+
     except Exception:
+
         pass
+
 
 with col3:
 
     try:
+
         st.image(
             "11679.png",
             width=140
         )
+
     except Exception:
+
         pass
 
 
@@ -1112,7 +1170,7 @@ st.markdown("---")
 
 
 # ============================================================
-# CARREGA PLANILHA
+# CARREGAR PLANILHA
 # ============================================================
 
 try:
@@ -1128,8 +1186,8 @@ try:
 except Exception as erro:
 
     st.error(
-        "❌ Não foi possível carregar a "
-        "Página1 do Google Sheets."
+        "❌ Não foi possível carregar "
+        "a Página1 do Google Sheets."
     )
 
     st.exception(erro)
@@ -1138,7 +1196,7 @@ except Exception as erro:
 
 
 # ============================================================
-# MENSAGEM APÓS OPERAÇÃO
+# MENSAGEM DE SUCESSO
 # ============================================================
 
 if st.session_state.get(
@@ -1246,7 +1304,7 @@ with st.expander(
                 st.stop()
 
             # -----------------------------------------------
-            # Verifica se matrícula já existe
+            # VERIFICA MATRÍCULA EXISTENTE
             # -----------------------------------------------
 
             linha_existente = (
@@ -1267,17 +1325,13 @@ with st.expander(
                 st.stop()
 
             # -----------------------------------------------
-            # Monta linha EXATAMENTE pela ordem da planilha
+            # MONTA LINHA
             # -----------------------------------------------
 
             nova_linha = montar_linha(
                 headers,
                 dados_novos
             )
-
-            # -----------------------------------------------
-            # Confere quantidade
-            # -----------------------------------------------
 
             if len(nova_linha) != len(headers):
 
@@ -1300,7 +1354,7 @@ with st.expander(
                 st.stop()
 
             # -----------------------------------------------
-            # SALVA
+            # SALVA NOVA LINHA
             # -----------------------------------------------
 
             worksheet.append_row(
@@ -1436,7 +1490,10 @@ with st.expander(
                             )
                         )
 
-                        # Matrícula é a chave e não pode mudar
+                        # ====================================
+                        # MATRÍCULA É A CHAVE
+                        # ====================================
+
                         dados_editados[
                             "Matrícula"
                         ] = matricula_editar
@@ -1453,10 +1510,9 @@ with st.expander(
 
                         try:
 
-                            # --------------------------------
-                            # Localiza novamente diretamente
-                            # na planilha
-                            # --------------------------------
+                            # =================================
+                            # LOCALIZA A LINHA NOVAMENTE
+                            # =================================
 
                             row_idx = (
                                 localizar_linha_por_matricula(
@@ -1475,9 +1531,9 @@ with st.expander(
 
                                 st.stop()
 
-                            # --------------------------------
-                            # Confere o nome antes da gravação
-                            # --------------------------------
+                            # =================================
+                            # NOME ORIGINAL
+                            # =================================
 
                             nome_anterior = texto(
                                 dados_atual.get(
@@ -1486,6 +1542,10 @@ with st.expander(
                                 )
                             ).strip()
 
+                            # =================================
+                            # NOME NOVO
+                            # =================================
+
                             nome_novo = texto(
                                 dados_editados.get(
                                     "Nome",
@@ -1493,19 +1553,42 @@ with st.expander(
                                 )
                             ).strip()
 
+                            # =================================
+                            # PROTEÇÃO DO NOME
+                            # =================================
+
+                            if not nome_novo:
+
+                                nome_novo = (
+                                    nome_anterior
+                                )
+
+                                dados_editados[
+                                    "Nome"
+                                ] = nome_anterior
+
                             if not nome_novo:
 
                                 st.error(
-                                    "❌ O campo Nome ficou vazio. "
-                                    "A atualização foi cancelada "
-                                    "para evitar apagar o cadastro."
+                                    "❌ O campo Nome está "
+                                    "vazio. A atualização "
+                                    "foi cancelada para "
+                                    "proteger o cadastro."
                                 )
 
                                 st.stop()
 
-                            # --------------------------------
-                            # MONTA A LINHA COMPLETA
-                            # --------------------------------
+                            # =================================
+                            # PROTEÇÃO DA MATRÍCULA
+                            # =================================
+
+                            dados_editados[
+                                "Matrícula"
+                            ] = matricula_editar
+
+                            # =================================
+                            # MONTA LINHA COMPLETA
+                            # =================================
 
                             linha_atualizada = (
                                 montar_linha(
@@ -1514,9 +1597,9 @@ with st.expander(
                                 )
                             )
 
-                            # --------------------------------
-                            # SEGURANÇA
-                            # --------------------------------
+                            # =================================
+                            # CONFERE QUANTIDADE
+                            # =================================
 
                             if (
                                 len(linha_atualizada)
@@ -1525,32 +1608,146 @@ with st.expander(
 
                                 st.error(
                                     "❌ Quantidade de campos "
-                                    "incompatível. Atualização "
-                                    "cancelada."
+                                    "incompatível. "
+                                    "Atualização cancelada."
+                                )
+
+                                st.write(
+                                    "Colunas:",
+                                    len(headers)
+                                )
+
+                                st.write(
+                                    "Dados:",
+                                    len(
+                                        linha_atualizada
+                                    )
                                 )
 
                                 st.stop()
 
-                            # --------------------------------
-                            # ATUALIZA A LINHA
-                            # --------------------------------
+                            # =================================
+                            # ENDEREÇO DA LINHA
+                            # =================================
+
+                            ultima_coluna = (
+                                gspread.utils
+                                .rowcol_to_a1(
+                                    row_idx,
+                                    len(headers)
+                                )
+                            )
 
                             intervalo = (
                                 f"A{row_idx}:"
-                                f"{gspread.utils.rowcol_to_a1("
-                                row_idx, len(headers)
-                                )}"
+                                f"{ultima_coluna}"
                             )
+
+                            # =================================
+                            # ATUALIZA A LINHA NO GOOGLE
+                            # =================================
 
                             worksheet.update(
-                                intervalo,
-                                [
+                                values=[
                                     linha_atualizada
                                 ],
-                                value_input_option="USER_ENTERED"
+                                range_name=intervalo,
+                                value_input_option=(
+                                    "USER_ENTERED"
+                                )
                             )
 
+                            # =================================
+                            # CONFIRMA A GRAVAÇÃO
+                            # =================================
+
+                            valores_confirmacao = (
+                                worksheet.get_all_values()
+                            )
+
+                            nome_confirmado = ""
+
+                            if valores_confirmacao:
+
+                                cabecalhos_confirmacao = [
+                                    str(x).strip()
+                                    for x in
+                                    valores_confirmacao[0]
+                                ]
+
+                                try:
+
+                                    coluna_nome = (
+                                        cabecalhos_confirmacao
+                                        .index("Nome")
+                                    )
+
+                                    if (
+                                        row_idx - 1
+                                        <
+                                        len(
+                                            valores_confirmacao
+                                        )
+                                    ):
+
+                                        linha_confirmacao = (
+                                            valores_confirmacao[
+                                                row_idx - 1
+                                            ]
+                                        )
+
+                                        if (
+                                            coluna_nome
+                                            <
+                                            len(
+                                                linha_confirmacao
+                                            )
+                                        ):
+
+                                            nome_confirmado = (
+                                                texto(
+                                                    linha_confirmacao[
+                                                        coluna_nome
+                                                    ]
+                                                ).strip()
+                                            )
+
+                                except ValueError:
+
+                                    nome_confirmado = ""
+
+                            # =================================
+                            # VERIFICAÇÃO FINAL
+                            # =================================
+
+                            if (
+                                nome_confirmado
+                                != nome_novo
+                            ):
+
+                                st.error(
+                                    "⚠️ A atualização foi "
+                                    "enviada, mas a conferência "
+                                    "da planilha não confirmou "
+                                    "o Nome esperado."
+                                )
+
+                                st.warning(
+                                    "Confira a linha "
+                                    f"{row_idx} na Página1."
+                                )
+
+                                st.stop()
+
+                            # =================================
+                            # LIMPA CACHE
+                            # =================================
+
                             st.cache_data.clear()
+
+                            # =================================
+                            # MENSAGEM
+                            # =================================
 
                             st.session_state[
                                 "mensagem_sucesso"
@@ -1571,7 +1768,9 @@ with st.expander(
                                 "o registro."
                             )
 
-                            st.exception(erro)
+                            st.exception(
+                                erro
+                            )
 
 
 # ============================================================
@@ -1687,8 +1886,10 @@ with st.expander(
                     st.session_state[
                         "mensagem_sucesso"
                     ] = (
-                        "🗑️ Registro excluído com sucesso. "
-                        f"Matrícula: {matricula_excluir}"
+                        "🗑️ Registro excluído "
+                        "com sucesso. "
+                        f"Matrícula: "
+                        f"{matricula_excluir}"
                     )
 
                     st.rerun()
@@ -1699,7 +1900,9 @@ with st.expander(
                         "❌ Erro ao excluir registro."
                     )
 
-                    st.exception(erro)
+                    st.exception(
+                        erro
+                    )
 
 
 # ============================================================
@@ -1743,10 +1946,10 @@ with st.expander(
 
         st.warning(
             "⚠️ A ordem dos cabeçalhos da "
-            "planilha é diferente da lista "
+            "planilha é diferente da ordem "
             "original. Isso não impede o "
-            "sistema, pois os campos são "
-            "salvos pelo nome do cabeçalho."
+            "sistema, pois os dados são "
+            "montados pelo nome do cabeçalho."
         )
 
         st.write(
