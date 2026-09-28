@@ -104,11 +104,24 @@ def normalizar_matricula(valor):
     return normalizar(valor)
 
 
-# ============================================================
-# CABEÇALHOS DUPLICADOS
-# ============================================================
-
 def tornar_headers_unicos(headers):
+    """
+    Cria nomes internos únicos para o DataFrame.
+
+    Exemplo:
+
+    OME
+    OME
+    OME
+
+    vira:
+
+    OME
+    OME [2]
+    OME [3]
+
+    A planilha original NÃO é alterada.
+    """
 
     usados = {}
     resultado = []
@@ -309,8 +322,10 @@ def carregar_dados():
         for x in valores[0]
     ]
 
-    headers_internos = tornar_headers_unicos(
-        headers_originais
+    headers_internos = (
+        tornar_headers_unicos(
+            headers_originais
+        )
     )
 
     dados = valores[1:]
@@ -327,10 +342,12 @@ def carregar_dados():
 
         if len(linha) < quantidade:
 
-            linha += [
-                ""
-            ] * (
-                quantidade - len(linha)
+            linha += (
+                [""] *
+                (
+                    quantidade -
+                    len(linha)
+                )
             )
 
         elif len(linha) > quantidade:
@@ -355,7 +372,9 @@ def carregar_dados():
 # ESTRUTURA DA PLANILHA
 # ============================================================
 
-def obter_headers_planilha(worksheet):
+def obter_headers_planilha(
+    worksheet
+):
 
     headers = [
         texto(x).strip()
@@ -372,7 +391,9 @@ def obter_headers_planilha(worksheet):
     return headers
 
 
-def verificar_estrutura(worksheet):
+def verificar_estrutura(
+    worksheet
+):
 
     headers = obter_headers_planilha(
         worksheet
@@ -402,7 +423,8 @@ def verificar_estrutura(worksheet):
         raise ValueError(
             "As seguintes colunas esperadas "
             "não foram encontradas na Página1:\n\n"
-            + "\n".join(
+            +
+            "\n".join(
                 f"- {x}"
                 for x in faltantes
             )
@@ -425,7 +447,10 @@ def localizar_coluna(
 
     for i, header in enumerate(headers):
 
-        if texto(header).strip() == nome:
+        if (
+            texto(header).strip()
+            == nome
+        ):
 
             contador += 1
 
@@ -484,7 +509,7 @@ def localizar_linha_por_matricula(
 
 
 # ============================================================
-# DADOS DA LINHA ORIGINAL
+# LINHA ORIGINAL
 # ============================================================
 
 def obter_linha_planilha(
@@ -503,15 +528,19 @@ def obter_linha_planilha(
     headers = valores[0]
 
     linha = list(
-        valores[numero_linha - 1]
+        valores[
+            numero_linha - 1
+        ]
     )
 
     if len(linha) < len(headers):
 
-        linha += [
-            ""
-        ] * (
-            len(headers) - len(linha)
+        linha += (
+            [""] *
+            (
+                len(headers) -
+                len(linha)
+            )
         )
 
     elif len(linha) > len(headers):
@@ -524,7 +553,7 @@ def obter_linha_planilha(
 
 
 # ============================================================
-# NOVO CADASTRO
+# ATUALIZAÇÃO
 # ============================================================
 
 def montar_linha_nova(
@@ -548,10 +577,6 @@ def montar_linha_nova(
     return linha
 
 
-# ============================================================
-# ATUALIZAÇÃO SEGURA
-# ============================================================
-
 def atualizar_linha_com_seguranca(
     headers,
     linha_original,
@@ -564,13 +589,17 @@ def atualizar_linha_com_seguranca(
 
     if len(nova_linha) < len(headers):
 
-        nova_linha += [
-            ""
-        ] * (
-            len(headers) - len(nova_linha)
+        nova_linha += (
+            [""] *
+            (
+                len(headers) -
+                len(nova_linha)
+            )
         )
 
-    for campo, valor in dados_editados.items():
+    for campo, valor in (
+        dados_editados.items()
+    ):
 
         posicao = localizar_coluna(
             headers,
@@ -634,14 +663,16 @@ def criar_formulario(
 
     resultado = {}
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(
-        [
-            "👤 Identificação & Pessoal",
-            "🏢 Lotação & Promoção",
-            "🔄 Cessão & Movimentação",
-            "⏳ LTIP & Afastamentos",
-            "📝 Documentos & Observações",
-        ]
+    tab1, tab2, tab3, tab4, tab5 = (
+        st.tabs(
+            [
+                "👤 Identificação & Pessoal",
+                "🏢 Lotação & Promoção",
+                "🔄 Cessão & Movimentação",
+                "⏳ LTIP & Afastamentos",
+                "📝 Documentos & Observações",
+            ]
+        )
     )
 
     # ========================================================
@@ -654,48 +685,60 @@ def criar_formulario(
 
         with c1:
 
-            resultado["Matrícula"] = campo_texto(
-                "Matrícula",
-                dados,
-                f"{prefixo}_matricula",
-                "Matrícula"
+            resultado["Matrícula"] = (
+                campo_texto(
+                    "Matrícula",
+                    dados,
+                    f"{prefixo}_matricula",
+                    "Matrícula"
+                )
             )
 
-            resultado["nº Funcional"] = campo_texto(
-                "nº Funcional",
-                dados,
-                f"{prefixo}_funcional",
-                "nº Funcional"
+            resultado["nº Funcional"] = (
+                campo_texto(
+                    "nº Funcional",
+                    dados,
+                    f"{prefixo}_funcional",
+                    "nº Funcional"
+                )
             )
 
-            resultado["Nº IDENT."] = campo_texto(
-                "Nº IDENT.",
-                dados,
-                f"{prefixo}_ident",
-                "Nº IDENT."
+            resultado["Nº IDENT."] = (
+                campo_texto(
+                    "Nº IDENT.",
+                    dados,
+                    f"{prefixo}_ident",
+                    "Nº IDENT."
+                )
             )
 
-            resultado["CPF"] = campo_texto(
-                "CPF",
-                dados,
-                f"{prefixo}_cpf",
-                "CPF"
+            resultado["CPF"] = (
+                campo_texto(
+                    "CPF",
+                    dados,
+                    f"{prefixo}_cpf",
+                    "CPF"
+                )
             )
 
         with c2:
 
-            resultado["Nome"] = campo_texto(
-                "Nome",
-                dados,
-                f"{prefixo}_nome",
-                "Nome"
+            resultado["Nome"] = (
+                campo_texto(
+                    "Nome",
+                    dados,
+                    f"{prefixo}_nome",
+                    "Nome"
+                )
             )
 
-            resultado["Nome de Guerra"] = campo_texto(
-                "Nome de Guerra",
-                dados,
-                f"{prefixo}_nome_guerra",
-                "Nome de Guerra"
+            resultado["Nome de Guerra"] = (
+                campo_texto(
+                    "Nome de Guerra",
+                    dados,
+                    f"{prefixo}_nome_guerra",
+                    "Nome de Guerra"
+                )
             )
 
             sexo_atual = normalizar(
@@ -711,17 +754,20 @@ def criar_formulario(
                 "FEMININO"
             ]
 
-            resultado["SEXO"] = st.selectbox(
-                "SEXO",
-                opcoes_sexo,
-                index=(
-                    opcoes_sexo.index(
-                        sexo_atual
-                    )
-                    if sexo_atual in opcoes_sexo
-                    else 0
-                ),
-                key=f"{prefixo}_sexo"
+            resultado["SEXO"] = (
+                st.selectbox(
+                    "SEXO",
+                    opcoes_sexo,
+                    index=(
+                        opcoes_sexo.index(
+                            sexo_atual
+                        )
+                        if sexo_atual
+                        in opcoes_sexo
+                        else 0
+                    ),
+                    key=f"{prefixo}_sexo"
+                )
             )
 
             raca_atual = normalizar(
@@ -740,47 +786,58 @@ def criar_formulario(
                 "INDÍGENA"
             ]
 
-            resultado["Raça/Cor"] = st.selectbox(
-                "Raça/Cor",
-                opcoes_raca,
-                index=(
-                    opcoes_raca.index(
-                        raca_atual
-                    )
-                    if raca_atual in opcoes_raca
-                    else 0
-                ),
-                key=f"{prefixo}_raca"
+            resultado["Raça/Cor"] = (
+                st.selectbox(
+                    "Raça/Cor",
+                    opcoes_raca,
+                    index=(
+                        opcoes_raca.index(
+                            raca_atual
+                        )
+                        if raca_atual
+                        in opcoes_raca
+                        else 0
+                    ),
+                    key=f"{prefixo}_raca"
+                )
             )
 
         with c3:
 
-            resultado["Posto/ Grad"] = campo_texto(
-                "Posto/ Grad",
-                dados,
-                f"{prefixo}_posto",
-                "Posto/ Grad"
+            resultado["Posto/ Grad"] = (
+                campo_texto(
+                    "Posto/ Grad",
+                    dados,
+                    f"{prefixo}_posto",
+                    "Posto/ Grad"
+                )
             )
 
-            resultado["Fones"] = campo_texto(
-                "Fones",
-                dados,
-                f"{prefixo}_fones",
-                "Fones"
+            resultado["Fones"] = (
+                campo_texto(
+                    "Fones",
+                    dados,
+                    f"{prefixo}_fones",
+                    "Fones"
+                )
             )
 
-            resultado["Ano de ingresso"] = campo_texto(
-                "Ano de ingresso",
-                dados,
-                f"{prefixo}_ano",
-                "Ano de ingresso"
+            resultado["Ano de ingresso"] = (
+                campo_texto(
+                    "Ano de ingresso",
+                    dados,
+                    f"{prefixo}_ano",
+                    "Ano de ingresso"
+                )
             )
 
-            resultado["Data de praça"] = campo_texto(
-                "Data de praça",
-                dados,
-                f"{prefixo}_praca",
-                "Data de praça"
+            resultado["Data de praça"] = (
+                campo_texto(
+                    "Data de praça",
+                    dados,
+                    f"{prefixo}_praca",
+                    "Data de praça"
+                )
             )
 
     # ========================================================
@@ -830,28 +887,36 @@ def criar_formulario(
 
         with c2:
 
-            resultado["Tempo de serviço (anos)"] = campo_texto(
+            resultado[
+                "Tempo de serviço (anos)"
+            ] = campo_texto(
                 "Tempo de serviço (anos)",
                 dados,
                 f"{prefixo}_tempo_anos",
                 "Tempo de serviço (anos)"
             )
 
-            resultado["Tempo de serviço (ano, mês, dias)"] = campo_texto(
+            resultado[
+                "Tempo de serviço (ano, mês, dias)"
+            ] = campo_texto(
                 "Tempo de serviço (ano, mês, dias)",
                 dados,
                 f"{prefixo}_tempo_amd",
                 "Tempo de serviço (ano, mês, dias)"
             )
 
-            resultado["Tempo de serviço (dias)"] = campo_texto(
+            resultado[
+                "Tempo de serviço (dias)"
+            ] = campo_texto(
                 "Tempo de serviço (dias)",
                 dados,
                 f"{prefixo}_tempo_dias",
                 "Tempo de serviço (dias)"
             )
 
-            resultado["Tempo na OBM atual"] = campo_texto(
+            resultado[
+                "Tempo na OBM atual"
+            ] = campo_texto(
                 "Tempo na OBM atual",
                 dados,
                 f"{prefixo}_tempo_obm",
@@ -971,7 +1036,8 @@ def criar_formulario(
                     opcoes_onus.index(
                         onus_atual
                     )
-                    if onus_atual in opcoes_onus
+                    if onus_atual
+                    in opcoes_onus
                     else 0
                 ),
                 key=f"{prefixo}_onus"
@@ -1006,11 +1072,13 @@ def criar_formulario(
                 "DOE/BGSDS de renovação"
             )
 
-            resultado["SEI deslig."] = campo_texto(
-                "SEI deslig.",
-                dados,
-                f"{prefixo}_sei",
-                "SEI deslig."
+            resultado["SEI deslig."] = (
+                campo_texto(
+                    "SEI deslig.",
+                    dados,
+                    f"{prefixo}_sei",
+                    "SEI deslig."
+                )
             )
 
     # ========================================================
@@ -1106,14 +1174,18 @@ def criar_formulario(
                 "Ato"
             )
 
-            resultado["Doc. Publicação"] = campo_texto(
+            resultado[
+                "Doc. Publicação"
+            ] = campo_texto(
                 "Doc. Publicação",
                 dados,
                 f"{prefixo}_doc",
                 "Doc. Publicação"
             )
 
-            resultado["SP da Adição"] = campo_texto(
+            resultado[
+                "SP da Adição"
+            ] = campo_texto(
                 "SP da Adição",
                 dados,
                 f"{prefixo}_sp",
@@ -1159,12 +1231,13 @@ def criar_formulario(
 
 
 # ============================================================
-# SIDEBAR - CONTROLES
+# SIDEBAR
 # ============================================================
 
 st.sidebar.success(
     "✅ Autenticado com sucesso!"
 )
+
 
 if st.sidebar.button(
     "🚪 Sair / Logout",
@@ -1199,20 +1272,25 @@ col1, col2, col3, col4 = st.columns(
 with col2:
 
     try:
+
         st.image(
             "images.png",
             width=140
         )
+
     except Exception:
         pass
+
 
 with col3:
 
     try:
+
         st.image(
             "11679.png",
             width=140
         )
+
     except Exception:
         pass
 
@@ -1237,8 +1315,10 @@ try:
 
     worksheet = get_sheet()
 
-    headers, duplicados = verificar_estrutura(
-        worksheet
+    headers, duplicados = (
+        verificar_estrutura(
+            worksheet
+        )
     )
 
     df = carregar_dados()
@@ -1262,8 +1342,8 @@ if duplicados:
 
     st.warning(
         "⚠️ A Página1 possui cabeçalhos duplicados. "
-        "O Dashboard tratará essas colunas internamente "
-        "sem alterar a planilha."
+        "O Dashboard continuará funcionando e NÃO "
+        "alterará os cabeçalhos da planilha."
     )
 
     with st.expander(
@@ -1278,7 +1358,7 @@ if duplicados:
 
 
 # ============================================================
-# MENSAGEM DE SUCESSO
+# MENSAGEM
 # ============================================================
 
 if st.session_state.get(
@@ -1297,45 +1377,19 @@ if st.session_state.get(
 
 
 # ============================================================
-# FILTROS LATERAIS
-# ============================================================
-
-st.sidebar.markdown("---")
-
-st.sidebar.header(
-    "🔎 Filtros"
-)
-
-st.sidebar.caption(
-    "Use os filtros abaixo para refinar "
-    "os registros e atualizar os gráficos."
-)
-
-
-# ============================================================
-# BUSCA GERAL
-# ============================================================
-
-busca = st.sidebar.text_input(
-    "🔍 Busca geral",
-    placeholder="Nome, matrícula, OME..."
-)
-
-
-# ============================================================
-# FUNÇÃO PARA OBTER VALORES
+# FUNÇÕES DOS FILTROS
 # ============================================================
 
 def valores_coluna(
-    df,
+    dataframe,
     coluna
 ):
 
-    if coluna not in df.columns:
+    if coluna not in dataframe.columns:
         return []
 
-    valores = (
-        df[coluna]
+    serie = (
+        dataframe[coluna]
         .fillna("")
         .astype(str)
         .str.strip()
@@ -1343,7 +1397,7 @@ def valores_coluna(
 
     valores = [
         x
-        for x in valores.unique()
+        for x in serie.unique()
         if x
     ]
 
@@ -1353,168 +1407,129 @@ def valores_coluna(
     )
 
 
-# ============================================================
-# FILTRO INDIVIDUAL PARA CADA COLUNA
-# ============================================================
-
-filtros_colunas = {}
-
-
-with st.sidebar.expander(
-    "📋 Filtros por coluna",
-    expanded=True
+def aplicar_multiselect(
+    dataframe,
+    coluna,
+    valores
 ):
 
-    for indice, coluna in enumerate(
-        df.columns
-    ):
+    if not valores:
+        return dataframe
 
-        valores = valores_coluna(
-            df,
-            coluna
-        )
+    if coluna not in dataframe.columns:
+        return dataframe
 
-        if not valores:
-            continue
+    serie = (
+        dataframe[coluna]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
 
-        # ----------------------------------------------------
-        # Chave interna segura
-        # ----------------------------------------------------
-
-        chave = (
-            "filtro_coluna_"
-            + str(indice)
-        )
-
-        # ----------------------------------------------------
-        # Para colunas com poucos valores:
-        # MULTISELECT
-        # ----------------------------------------------------
-
-        if len(valores) <= 100:
-
-            selecionados = st.multiselect(
-                coluna,
-                valores,
-                key=chave,
-                placeholder="Todos"
-            )
-
-            filtros_colunas[coluna] = (
-                selecionados
-            )
-
-        # ----------------------------------------------------
-        # Para colunas com muitos valores:
-        # BUSCA POR TEXTO
-        # ----------------------------------------------------
-
-        else:
-
-            texto_filtro = st.text_input(
-                coluna,
-                key=chave,
-                placeholder="Digite para filtrar..."
-            )
-
-            filtros_colunas[coluna] = (
-                texto_filtro
-            )
+    return dataframe[
+        serie.isin(valores)
+    ]
 
 
 # ============================================================
-# LIMPAR FILTROS
+# FILTROS LATERAIS
+# ============================================================
+
+st.sidebar.markdown("---")
+
+st.sidebar.header(
+    "🔎 Filtros"
+)
+
+
+# ============================================================
+# BUSCA GERAL
+# ============================================================
+
+busca = st.sidebar.text_input(
+    "🔍 Busca geral",
+    placeholder=(
+        "Digite nome, matrícula, OME..."
+    ),
+    key="busca_geral"
+)
+
+
+# ============================================================
+# FILTROS DE TODAS AS COLUNAS
+# ============================================================
+
+filtros = {}
+
+
+for numero, coluna in enumerate(
+    df.columns
+):
+
+    valores = valores_coluna(
+        df,
+        coluna
+    )
+
+    # Evita criar multiselect inútil
+    # para coluna totalmente vazia.
+    if not valores:
+        continue
+
+    filtros[coluna] = (
+        st.sidebar.multiselect(
+            coluna,
+            valores,
+            key=f"filtro_coluna_{numero}"
+        )
+    )
+
+
+# ============================================================
+# BOTÃO LIMPAR
 # ============================================================
 
 if st.sidebar.button(
-    "🧹 LIMPAR TODOS OS FILTROS",
+    "🧹 Limpar todos os filtros",
     use_container_width=True
 ):
 
-    # Remove somente as chaves de filtros
-    # para não interferir no restante do sistema.
+    for chave in list(
+        st.session_state.keys()
+    ):
 
-    chaves_remover = []
-
-    for chave in st.session_state.keys():
-
-        if chave.startswith(
-            "filtro_coluna_"
+        if (
+            chave.startswith(
+                "filtro_coluna_"
+            )
+            or chave == "busca_geral"
         ):
 
-            chaves_remover.append(
+            del st.session_state[
                 chave
-            )
-
-    for chave in chaves_remover:
-
-        del st.session_state[
-            chave
-        ]
-
-    # Limpa a busca geral.
-
-    if "busca_geral" in st.session_state:
-
-        del st.session_state[
-            "busca_geral"
-        ]
+            ]
 
     st.rerun()
 
 
 # ============================================================
-# APLICAÇÃO DOS FILTROS
+# APLICA FILTROS
 # ============================================================
 
 df_filtrado = df.copy()
 
 
-for coluna, filtro in filtros_colunas.items():
+for coluna, valores in filtros.items():
 
-    if coluna not in df_filtrado.columns:
-        continue
-
-    # --------------------------------------------------------
-    # MULTISELECT
-    # --------------------------------------------------------
-
-    if isinstance(filtro, list):
-
-        if filtro:
-
-            df_filtrado = df_filtrado[
-                df_filtrado[coluna]
-                .fillna("")
-                .astype(str)
-                .str.strip()
-                .isin(filtro)
-            ]
-
-    # --------------------------------------------------------
-    # TEXTO
-    # --------------------------------------------------------
-
-    elif isinstance(filtro, str):
-
-        termo_coluna = filtro.strip()
-
-        if termo_coluna:
-
-            df_filtrado = df_filtrado[
-                df_filtrado[coluna]
-                .fillna("")
-                .astype(str)
-                .str.contains(
-                    termo_coluna,
-                    case=False,
-                    regex=False
-                )
-            ]
+    df_filtrado = aplicar_multiselect(
+        df_filtrado,
+        coluna,
+        valores
+    )
 
 
 # ============================================================
-# BUSCA GERAL
+# BUSCA DIGITADA
 # ============================================================
 
 if busca.strip():
@@ -1528,26 +1543,31 @@ if busca.strip():
 
     for coluna in df_filtrado.columns:
 
-        mascara = (
-            mascara
-            |
+        serie = (
             df_filtrado[coluna]
             .fillna("")
             .astype(str)
             .str.lower()
-            .str.contains(
+        )
+
+        mascara = (
+            mascara
+            |
+            serie.str.contains(
                 termo,
                 regex=False
             )
         )
 
-    df_filtrado = df_filtrado[
-        mascara
-    ]
+    df_filtrado = (
+        df_filtrado[
+            mascara
+        ]
+    )
 
 
 # ============================================================
-# INDICADORES
+# RESUMO
 # ============================================================
 
 st.subheader(
@@ -1556,12 +1576,14 @@ st.subheader(
 
 m1, m2, m3, m4 = st.columns(4)
 
+
 with m1:
 
     st.metric(
         "👥 Total de registros",
         len(df)
     )
+
 
 with m2:
 
@@ -1570,16 +1592,19 @@ with m2:
         len(df_filtrado)
     )
 
+
 with m3:
 
     if "OME" in df.columns:
 
         st.metric(
             "🏢 OME",
-            df_filtrado["OME"]
-            .replace("", pd.NA)
-            .dropna()
-            .nunique()
+            (
+                df_filtrado["OME"]
+                .replace("", pd.NA)
+                .dropna()
+                .nunique()
+            )
         )
 
     else:
@@ -1588,6 +1613,7 @@ with m3:
             "🏢 OME",
             0
         )
+
 
 with m4:
 
@@ -1595,10 +1621,14 @@ with m4:
 
         st.metric(
             "🎖️ Postos/Grad.",
-            df_filtrado["Posto/ Grad"]
-            .replace("", pd.NA)
-            .dropna()
-            .nunique()
+            (
+                df_filtrado[
+                    "Posto/ Grad"
+                ]
+                .replace("", pd.NA)
+                .dropna()
+                .nunique()
+            )
         )
 
     else:
@@ -1610,94 +1640,133 @@ with m4:
 
 
 # ============================================================
-# GRÁFICOS
+# GRÁFICO ÚNICO
 # ============================================================
+
+st.markdown("---")
 
 st.subheader(
-    "📈 Gráficos"
+    "📈 Gráfico interativo"
 )
 
-graf1, graf2 = st.columns(2)
+st.caption(
+    "O gráfico abaixo utiliza exclusivamente os "
+    "registros que permanecem após os filtros laterais."
+)
 
 
-# ============================================================
-# GRÁFICO 1 - POSTO/GRAD
-# ============================================================
+if df_filtrado.empty:
 
-with graf1:
+    st.warning(
+        "⚠️ Nenhum registro corresponde aos filtros selecionados."
+    )
 
-    if (
-        "Posto/ Grad" in df_filtrado.columns
-        and not df_filtrado.empty
-    ):
+else:
 
-        contagem_posto = (
-            df_filtrado[
-                "Posto/ Grad"
-            ]
-            .replace(
-                "",
-                "Não informado"
-            )
-            .value_counts()
-            .head(20)
+    col_grafico, col_tipo = st.columns(
+        [3, 1]
+    )
+
+    with col_grafico:
+
+        colunas_disponiveis = (
+            list(df_filtrado.columns)
         )
 
-        st.markdown(
-            "### 🎖️ Militares por Posto/Grad."
+        coluna_grafico = st.selectbox(
+            "📊 Escolha a coluna para o gráfico",
+            colunas_disponiveis,
+            index=(
+                colunas_disponiveis.index(
+                    "Posto/ Grad"
+                )
+                if "Posto/ Grad"
+                in colunas_disponiveis
+                else 0
+            ),
+            key="coluna_grafico"
         )
+
+    with col_tipo:
+
+        tipo_grafico = st.selectbox(
+            "Tipo",
+            [
+                "Barras",
+                "Horizontal"
+            ],
+            key="tipo_grafico"
+        )
+
+
+    # --------------------------------------------------------
+    # CONTAGEM
+    # --------------------------------------------------------
+
+    serie_grafico = (
+        df_filtrado[
+            coluna_grafico
+        ]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+
+    serie_grafico = (
+        serie_grafico
+        .replace(
+            "",
+            "Não informado"
+        )
+    )
+
+    contagem = (
+        serie_grafico
+        .value_counts()
+        .head(20)
+    )
+
+    grafico_df = (
+        contagem
+        .rename("Quantidade")
+        .to_frame()
+    )
+
+
+    # --------------------------------------------------------
+    # GRÁFICO
+    # --------------------------------------------------------
+
+    if tipo_grafico == "Barras":
 
         st.bar_chart(
-            contagem_posto,
+            grafico_df,
+            x_label=coluna_grafico,
+            y_label="Quantidade",
             use_container_width=True
         )
 
     else:
 
-        st.info(
-            "Não há dados suficientes "
-            "para o gráfico de Posto/Grad."
-        )
-
-
-# ============================================================
-# GRÁFICO 2 - OME
-# ============================================================
-
-with graf2:
-
-    if (
-        "OME" in df_filtrado.columns
-        and not df_filtrado.empty
-    ):
-
-        contagem_ome = (
-            df_filtrado[
-                "OME"
-            ]
-            .replace(
-                "",
-                "Não informado"
+        grafico_horizontal = (
+            grafico_df
+            .sort_values(
+                "Quantidade"
             )
-            .value_counts()
-            .head(20)
-        )
-
-        st.markdown(
-            "### 🏢 Militares por OME"
         )
 
         st.bar_chart(
-            contagem_ome,
+            grafico_horizontal,
+            x="Quantidade",
+            y_label="Quantidade",
             use_container_width=True
         )
 
-    else:
 
-        st.info(
-            "Não há dados suficientes "
-            "para o gráfico de OME."
-        )
+    st.caption(
+        f"Exibindo os 20 principais valores de "
+        f"'{coluna_grafico}' após os filtros."
+    )
 
 
 # ============================================================
@@ -1757,14 +1826,17 @@ with st.expander(
             use_container_width=True
         )
 
+
     if salvar:
 
         try:
 
-            matricula = normalizar_matricula(
-                dados_novos.get(
-                    "Matrícula",
-                    ""
+            matricula = (
+                normalizar_matricula(
+                    dados_novos.get(
+                        "Matrícula",
+                        ""
+                    )
                 )
             )
 
@@ -1808,12 +1880,17 @@ with st.expander(
 
                 st.stop()
 
-            nova_linha = montar_linha_nova(
-                headers,
-                dados_novos
+            nova_linha = (
+                montar_linha_nova(
+                    headers,
+                    dados_novos
+                )
             )
 
-            if len(nova_linha) != len(headers):
+            if (
+                len(nova_linha)
+                != len(headers)
+            ):
 
                 st.error(
                     "❌ Quantidade de campos "
@@ -1911,7 +1988,10 @@ with st.expander(
 
                 matricula_editar = (
                     selecionado
-                    .split(" - ", 1)[0]
+                    .split(
+                        " - ",
+                        1
+                    )[0]
                     .strip()
                 )
 
@@ -1919,7 +1999,8 @@ with st.expander(
                     df["Matrícula"]
                     .astype(str)
                     .str.strip()
-                    == matricula_editar
+                    ==
+                    matricula_editar
                 ]
 
                 if registros.empty:
@@ -1998,8 +2079,7 @@ with st.expander(
 
                                 st.error(
                                     "❌ O campo Nome ficou vazio. "
-                                    "A atualização foi cancelada "
-                                    "para proteger o cadastro."
+                                    "A atualização foi cancelada."
                                 )
 
                                 st.stop()
@@ -2020,21 +2100,24 @@ with st.expander(
                             )
 
                             if (
-                                len(linha_atualizada)
+                                len(
+                                    linha_atualizada
+                                )
                                 != len(headers)
                             ):
 
                                 st.error(
                                     "❌ Quantidade de colunas "
-                                    "incompatível. Atualização "
-                                    "cancelada."
+                                    "incompatível."
                                 )
 
                                 st.stop()
 
-                            coluna_nome = localizar_coluna(
-                                headers,
-                                "Nome"
+                            coluna_nome = (
+                                localizar_coluna(
+                                    headers,
+                                    "Nome"
+                                )
                             )
 
                             if coluna_nome is None:
@@ -2055,21 +2138,22 @@ with st.expander(
 
                                 st.error(
                                     "❌ PROTEÇÃO ATIVADA: "
-                                    "o Nome ficaria vazio. "
-                                    "A atualização foi cancelada."
+                                    "o Nome ficaria vazio."
                                 )
 
                                 st.stop()
 
                             primeira_celula = (
-                                gspread.utils.rowcol_to_a1(
+                                gspread.utils
+                                .rowcol_to_a1(
                                     row_idx,
                                     1
                                 )
                             )
 
                             ultima_celula = (
-                                gspread.utils.rowcol_to_a1(
+                                gspread.utils
+                                .rowcol_to_a1(
                                     row_idx,
                                     len(headers)
                                 )
@@ -2155,17 +2239,22 @@ with st.expander(
                     f"{matricula} - {nome}"
                 )
 
-        selecionado_excluir = st.selectbox(
-            "Selecione o militar:",
-            [""] + opcoes_exclusao,
-            key="militar_exclusao"
+        selecionado_excluir = (
+            st.selectbox(
+                "Selecione o militar:",
+                [""] + opcoes_exclusao,
+                key="militar_exclusao"
+            )
         )
 
         if selecionado_excluir:
 
             matricula_excluir = (
                 selecionado_excluir
-                .split(" - ", 1)[0]
+                .split(
+                    " - ",
+                    1
+                )[0]
                 .strip()
             )
 
@@ -2173,7 +2262,8 @@ with st.expander(
                 df["Matrícula"]
                 .astype(str)
                 .str.strip()
-                == matricula_excluir
+                ==
+                matricula_excluir
             ]
 
             st.dataframe(
