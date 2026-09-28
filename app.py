@@ -10,8 +10,10 @@ import streamlit as st
 
 st.set_page_config(
     page_title="DGP - Dados dos Militares",
-    layout="wide"
+    page_icon="🚨",
+    layout="wide",
 )
+
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -77,6 +79,31 @@ HEADERS_ESPERADOS = [
 
 
 # ============================================================
+# FUNÇÕES GERAIS
+# ============================================================
+
+def texto(valor):
+    if valor is None:
+        return ""
+
+    try:
+        if pd.isna(valor):
+            return ""
+    except Exception:
+        pass
+
+    return str(valor)
+
+
+def normalizar_matricula(valor):
+    return texto(valor).strip().upper()
+
+
+def valor_para_filtro(valor):
+    return texto(valor).strip()
+
+
+# ============================================================
 # AUTENTICAÇÃO
 # ============================================================
 
@@ -103,10 +130,7 @@ def check_password():
             user in passwords_dict
             and str(passwords_dict[user]) == pwd
         ):
-
-            st.session_state[
-                "password_correct"
-            ] = True
+            st.session_state["password_correct"] = True
 
             st.session_state.pop(
                 "password",
@@ -119,10 +143,7 @@ def check_password():
             )
 
         else:
-
-            st.session_state[
-                "password_correct"
-            ] = False
+            st.session_state["password_correct"] = False
 
     if st.session_state.get(
         "password_correct",
@@ -130,13 +151,9 @@ def check_password():
     ):
         return True
 
-    st.title(
-        "🔒 Acesso Restrito ao Dashboard"
-    )
+    st.title("🔒 Acesso Restrito ao Dashboard")
 
-    col1, col2, col3 = st.columns(
-        [1, 2, 1]
-    )
+    col1, col2, col3 = st.columns([1, 2, 1])
 
     with col2:
 
@@ -158,11 +175,8 @@ def check_password():
 
         if (
             "password_correct" in st.session_state
-            and not st.session_state[
-                "password_correct"
-            ]
+            and not st.session_state["password_correct"]
         ):
-
             st.error(
                 "😕 Usuário ou senha incorretos."
             )
@@ -175,24 +189,17 @@ if not check_password():
 
 
 # ============================================================
-# CONEXÃO GOOGLE SHEETS
+# GOOGLE SHEETS
 # ============================================================
 
 def get_gspread_client():
 
-    credentials = (
-        Credentials
-        .from_service_account_info(
-            st.secrets[
-                "gcp_service_account"
-            ],
-            scopes=SCOPES
-        )
+    credentials = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=SCOPES
     )
 
-    return gspread.authorize(
-        credentials
-    )
+    return gspread.authorize(credentials)
 
 
 def get_sheet():
@@ -201,44 +208,11 @@ def get_sheet():
 
     client = get_gspread_client()
 
-    spreadsheet = client.open_by_key(
-        sheet_id
-    )
+    spreadsheet = client.open_by_key(sheet_id)
 
-    worksheet = spreadsheet.worksheet(
-        "Página1"
-    )
+    worksheet = spreadsheet.worksheet("Página1")
 
     return worksheet
-
-
-# ============================================================
-# TEXTO
-# ============================================================
-
-def texto(valor):
-
-    if valor is None:
-        return ""
-
-    try:
-
-        if pd.isna(valor):
-            return ""
-
-    except Exception:
-        pass
-
-    return str(valor)
-
-
-def normalizar_matricula(valor):
-
-    return (
-        texto(valor)
-        .strip()
-        .upper()
-    )
 
 
 # ============================================================
@@ -253,46 +227,31 @@ def carregar_dados():
     valores = worksheet.get_all_values()
 
     if not valores:
-
         return pd.DataFrame(
             columns=HEADERS_ESPERADOS
         )
 
-    cabecalhos_originais = [
-        str(x).strip()
+    cabecalhos = [
+        texto(x).strip()
         for x in valores[0]
     ]
 
-    # --------------------------------------------------------
-    # Cria nomes únicos para o DataFrame
-    # --------------------------------------------------------
-
-    contagem = {}
-    cabecalhos = []
-
-    for header in cabecalhos_originais:
-
-        if header not in contagem:
-
-            contagem[header] = 1
-
-            cabecalhos.append(
-                header
-            )
-
-        else:
-
-            contagem[header] += 1
-
-            cabecalhos.append(
-                f"{header} (duplicado {contagem[header]})"
-            )
-
     dados = valores[1:]
 
-    quantidade_colunas = len(
-        cabecalhos
-    )
+    # Verifica duplicidade
+    duplicados = [
+        x
+        for x in set(cabecalhos)
+        if cabecalhos.count(x) > 1
+    ]
+
+    if duplicados:
+        raise ValueError(
+            "Existem cabeçalhos duplicados na Página1: "
+            + ", ".join(duplicados)
+        )
+
+    quantidade_colunas = len(cabecalhos)
 
     linhas_corrigidas = []
 
@@ -301,49 +260,82 @@ def carregar_dados():
         linha = list(linha)
 
         if len(linha) < quantidade_colunas:
-
-            linha += (
-                [""] *
-                (
-                    quantidade_colunas
-                    - len(linha)
-                )
+            linha += [""] * (
+                quantidade_colunas - len(linha)
             )
 
         elif len(linha) > quantidade_colunas:
+            linha = linha[:quantidade_colunas]
 
-            linha = linha[
-                :quantidade_colunas
-            ]
-
-        linhas_corrigidas.append(
-            linha
-        )
+        linhas_corrigidas.append(linha)
 
     df = pd.DataFrame(
         linhas_corrigidas,
         columns=cabecalhos
     )
 
+    # Segurança adicional contra duplicidade
+    df = df.loc[:, ~df.columns.duplicated()]
+
     return df
+
+
+# ============================================================
+# ESTRUTURA
+# ============================================================
+
+def verificar_estrutura(worksheet):
+
+    headers = [
+        texto(x).strip()
+        for x in worksheet.row_values(1)
+    ]
+
+    if not headers:
+        raise ValueError(
+            "A primeira linha da Página1 está vazia."
+        )
+
+    duplicados = [
+        x
+        for x in set(headers)
+        if headers.count(x) > 1
+    ]
+
+    if duplicados:
+        raise ValueError(
+            "Existem colunas duplicadas: "
+            + ", ".join(duplicados)
+        )
+
+    faltantes = [
+        x
+        for x in HEADERS_ESPERADOS
+        if x not in headers
+    ]
+
+    if faltantes:
+        raise ValueError(
+            "As seguintes colunas esperadas "
+            "não foram encontradas:\n\n"
+            + "\n".join(
+                f"- {x}"
+                for x in faltantes
+            )
+        )
+
+    return headers
 
 
 # ============================================================
 # LOCALIZAR COLUNA
 # ============================================================
 
-def localizar_coluna(
-    headers,
-    nome
-):
+def localizar_coluna(headers, nome):
 
     for i, header in enumerate(headers):
 
-        if (
-            str(header).strip()
-            == nome
-        ):
-
+        if texto(header).strip() == nome:
             return i + 1
 
     return None
@@ -363,10 +355,7 @@ def localizar_linha_por_matricula(
     if not valores:
         return None
 
-    headers = [
-        str(x).strip()
-        for x in valores[0]
-    ]
+    headers = valores[0]
 
     coluna = localizar_coluna(
         headers,
@@ -374,18 +363,14 @@ def localizar_linha_por_matricula(
     )
 
     if coluna is None:
-
         raise ValueError(
-            "A coluna Matrícula não foi "
-            "encontrada na Página1."
+            "A coluna Matrícula não foi encontrada."
         )
 
     indice = coluna - 1
 
-    matricula_procurada = (
-        normalizar_matricula(
-            matricula
-        )
+    matricula_procurada = normalizar_matricula(
+        matricula
     )
 
     for numero_linha, linha in enumerate(
@@ -395,30 +380,21 @@ def localizar_linha_por_matricula(
 
         if indice < len(linha):
 
-            matricula_linha = (
-                normalizar_matricula(
-                    linha[indice]
-                )
+            matricula_linha = normalizar_matricula(
+                linha[indice]
             )
 
-            if (
-                matricula_linha
-                == matricula_procurada
-            ):
-
+            if matricula_linha == matricula_procurada:
                 return numero_linha
 
     return None
 
 
 # ============================================================
-# MONTAR LINHA
+# MONTAR LINHA PARA GRAVAÇÃO
 # ============================================================
 
-def montar_linha(
-    headers,
-    dados
-):
+def montar_linha(headers, dados):
 
     linha = []
 
@@ -437,79 +413,7 @@ def montar_linha(
 
 
 # ============================================================
-# VERIFICAR ESTRUTURA
-# ============================================================
-
-def verificar_estrutura(
-    worksheet
-):
-
-    headers = [
-        str(x).strip()
-        for x in worksheet.row_values(1)
-    ]
-
-    if not headers:
-
-        raise ValueError(
-            "A primeira linha da Página1 "
-            "está vazia."
-        )
-
-    # --------------------------------------------------------
-    # Cabeçalhos duplicados
-    # --------------------------------------------------------
-
-    duplicados = []
-
-    for header in set(headers):
-
-        if headers.count(header) > 1:
-
-            duplicados.append(
-                header
-            )
-
-    if duplicados:
-
-        raise ValueError(
-            "Existem cabeçalhos duplicados "
-            "na Página1:\n\n"
-            + "\n".join(
-                f"- {x}"
-                for x in duplicados
-            )
-            + "\n\n"
-            "Corrija esses nomes na primeira "
-            "linha da planilha antes de continuar."
-        )
-
-    # --------------------------------------------------------
-    # Cabeçalhos faltantes
-    # --------------------------------------------------------
-
-    faltantes = [
-        x
-        for x in HEADERS_ESPERADOS
-        if x not in headers
-    ]
-
-    if faltantes:
-
-        raise ValueError(
-            "As seguintes colunas esperadas "
-            "não foram encontradas:\n\n"
-            + "\n".join(
-                f"- {x}"
-                for x in faltantes
-            )
-        )
-
-    return headers
-
-
-# ============================================================
-# CAMPO DE TEXTO
+# FORMULÁRIO
 # ============================================================
 
 def campo_texto(
@@ -528,7 +432,6 @@ def campo_texto(
     )
 
     if tipo == "area":
-
         return st.text_area(
             label,
             value=valor,
@@ -541,10 +444,6 @@ def campo_texto(
         key=chave
     )
 
-
-# ============================================================
-# FORMULÁRIO
-# ============================================================
 
 def criar_formulario(
     dados,
@@ -567,7 +466,7 @@ def criar_formulario(
     )
 
     # ========================================================
-    # ABA 1
+    # TAB 1
     # ========================================================
 
     with tab1:
@@ -637,11 +536,8 @@ def criar_formulario(
                 "SEXO",
                 opcoes_sexo,
                 index=(
-                    opcoes_sexo.index(
-                        sexo_atual
-                    )
-                    if sexo_atual
-                    in opcoes_sexo
+                    opcoes_sexo.index(sexo_atual)
+                    if sexo_atual in opcoes_sexo
                     else 0
                 ),
                 key=f"{prefixo}_sexo"
@@ -667,11 +563,8 @@ def criar_formulario(
                 "Raça/Cor",
                 opcoes_raca,
                 index=(
-                    opcoes_raca.index(
-                        raca_atual
-                    )
-                    if raca_atual
-                    in opcoes_raca
+                    opcoes_raca.index(raca_atual)
+                    if raca_atual in opcoes_raca
                     else 0
                 ),
                 key=f"{prefixo}_raca"
@@ -708,7 +601,7 @@ def criar_formulario(
             )
 
     # ========================================================
-    # ABA 2
+    # TAB 2
     # ========================================================
 
     with tab2:
@@ -820,7 +713,7 @@ def criar_formulario(
             )
 
     # ========================================================
-    # ABA 3
+    # TAB 3
     # ========================================================
 
     with tab3:
@@ -900,11 +793,8 @@ def criar_formulario(
                 "Ônus para Origem",
                 opcoes_onus,
                 index=(
-                    opcoes_onus.index(
-                        onus_atual
-                    )
-                    if onus_atual
-                    in opcoes_onus
+                    opcoes_onus.index(onus_atual)
+                    if onus_atual in opcoes_onus
                     else 0
                 ),
                 key=f"{prefixo}_onus"
@@ -947,7 +837,7 @@ def criar_formulario(
             )
 
     # ========================================================
-    # ABA 4
+    # TAB 4
     # ========================================================
 
     with tab4:
@@ -966,9 +856,7 @@ def criar_formulario(
                 tipo="area"
             )
 
-            resultado[
-                "INÍCIO DA LTIP"
-            ] = campo_texto(
+            resultado["INÍCIO DA LTIP"] = campo_texto(
                 "INÍCIO DA LTIP",
                 dados,
                 f"{prefixo}_inicio_ltip",
@@ -1023,7 +911,7 @@ def criar_formulario(
             )
 
     # ========================================================
-    # ABA 5
+    # TAB 5
     # ========================================================
 
     with tab5:
@@ -1080,9 +968,7 @@ def criar_formulario(
                 "Hoje"
             )
 
-            resultado[
-                "OBS"
-            ] = campo_texto(
+            resultado["OBS"] = campo_texto(
                 "OBS",
                 dados,
                 f"{prefixo}_obs",
@@ -1098,27 +984,22 @@ def criar_formulario(
 # ============================================================
 
 st.sidebar.success(
-    "Autenticado com sucesso!"
+    "✅ Autenticado com sucesso!"
 )
-
 
 if st.sidebar.button(
     "🚪 Sair / Logout"
 ):
 
-    st.session_state[
-        "password_correct"
-    ] = False
-
+    st.session_state["password_correct"] = False
     st.rerun()
 
 
 if st.sidebar.button(
-    "🔄 Forçar Atualização"
+    "🔄 Atualizar dados da planilha"
 ):
 
     st.cache_data.clear()
-
     st.rerun()
 
 
@@ -1130,38 +1011,31 @@ col1, col2, col3, col4 = st.columns(
     [2, 1, 1, 2]
 )
 
-
 with col2:
 
     try:
-
         st.image(
             "images.png",
             width=140
         )
-
     except Exception:
-
         pass
 
 
 with col3:
 
     try:
-
         st.image(
             "11679.png",
             width=140
         )
-
     except Exception:
-
         pass
 
 
 st.markdown(
     "<h1 style='text-align:center;'>"
-    "DGP - Dados dos Militares"
+    "🚨 DGP - Dados dos Militares"
     "</h1>",
     unsafe_allow_html=True
 )
@@ -1170,7 +1044,7 @@ st.markdown("---")
 
 
 # ============================================================
-# CARREGAR PLANILHA
+# CONEXÃO
 # ============================================================
 
 try:
@@ -1186,11 +1060,30 @@ try:
 except Exception as erro:
 
     st.error(
-        "❌ Não foi possível carregar "
-        "a Página1 do Google Sheets."
+        "❌ Não foi possível carregar a Página1."
     )
 
     st.exception(erro)
+
+    st.stop()
+
+
+# ============================================================
+# SEGURANÇA CONTRA COLUNAS DUPLICADAS
+# ============================================================
+
+if df.columns.duplicated().any():
+
+    duplicadas = list(
+        df.columns[
+            df.columns.duplicated()
+        ]
+    )
+
+    st.error(
+        "❌ Existem colunas duplicadas no DataFrame: "
+        + ", ".join(duplicadas)
+    )
 
     st.stop()
 
@@ -1204,9 +1097,7 @@ if st.session_state.get(
 ):
 
     st.success(
-        st.session_state[
-            "mensagem_sucesso"
-        ]
+        st.session_state["mensagem_sucesso"]
     )
 
     del st.session_state[
@@ -1215,31 +1106,516 @@ if st.session_state.get(
 
 
 # ============================================================
-# VISUALIZAÇÃO
+# FILTROS LATERAIS
 # ============================================================
 
-st.subheader(
-    "📋 Visualização dos Registros"
+st.sidebar.markdown("---")
+st.sidebar.header("🎛️ Filtros")
+
+
+def criar_filtro(df_base, coluna, label):
+
+    if coluna not in df_base.columns:
+        return []
+
+    valores = sorted(
+        [
+            valor_para_filtro(x)
+            for x in df_base[coluna].unique()
+            if valor_para_filtro(x)
+        ]
+    )
+
+    return st.sidebar.multiselect(
+        label,
+        valores,
+        default=[],
+        key=f"filtro_{coluna}"
+    )
+
+
+# Busca geral
+busca = st.sidebar.text_input(
+    "🔎 Buscar militar",
+    placeholder="Nome, matrícula, CPF..."
 )
 
+
+filtro_posto = criar_filtro(
+    df,
+    "Posto/ Grad",
+    "Posto/ Grad"
+)
+
+filtro_ome = criar_filtro(
+    df,
+    "OME",
+    "OME"
+)
+
+filtro_atividade = criar_filtro(
+    df,
+    "Atividade",
+    "Atividade"
+)
+
+filtro_municipio = criar_filtro(
+    df,
+    "Município",
+    "Município"
+)
+
+filtro_regiao = criar_filtro(
+    df,
+    "Região",
+    "Região"
+)
+
+filtro_sexo = criar_filtro(
+    df,
+    "SEXO",
+    "SEXO"
+)
+
+filtro_raca = criar_filtro(
+    df,
+    "Raça/Cor",
+    "Raça/Cor"
+)
+
+filtro_orgao = criar_filtro(
+    df,
+    "ÓRGÃO",
+    "ÓRGÃO"
+)
+
+filtro_poder = criar_filtro(
+    df,
+    "Poder",
+    "Poder"
+)
+
+
+if st.sidebar.button(
+    "🧹 Limpar filtros"
+):
+
+    chaves = [
+        "filtro_Posto/ Grad",
+        "filtro_OME",
+        "filtro_Atividade",
+        "filtro_Município",
+        "filtro_Região",
+        "filtro_SEXO",
+        "filtro_Raça/Cor",
+        "filtro_ÓRGÃO",
+        "filtro_Poder",
+    ]
+
+    for chave in chaves:
+        if chave in st.session_state:
+            st.session_state[chave] = []
+
+    st.session_state["busca"] = ""
+
+    st.rerun()
+
+
+# ============================================================
+# APLICAÇÃO DOS FILTROS
+# ============================================================
+
+df_filtrado = df.copy()
+
+
+if busca:
+
+    texto_busca = busca.strip().lower()
+
+    colunas_busca = [
+        "Matrícula",
+        "Nome",
+        "Nome de Guerra",
+        "CPF",
+        "Nº IDENT.",
+        "nº Funcional",
+        "Fones",
+    ]
+
+    mascaras = []
+
+    for coluna in colunas_busca:
+
+        if coluna in df_filtrado.columns:
+
+            mascaras.append(
+                df_filtrado[coluna]
+                .fillna("")
+                .astype(str)
+                .str.lower()
+                .str.contains(
+                    texto_busca,
+                    regex=False
+                )
+            )
+
+    if mascaras:
+
+        mascara_final = mascaras[0]
+
+        for mascara in mascaras[1:]:
+            mascara_final = (
+                mascara_final
+                | mascara
+            )
+
+        df_filtrado = df_filtrado[
+            mascara_final
+        ]
+
+
+def aplicar_filtro(
+    dataframe,
+    coluna,
+    valores
+):
+
+    if (
+        valores
+        and coluna in dataframe.columns
+    ):
+
+        return dataframe[
+            dataframe[coluna]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .isin(valores)
+        ]
+
+    return dataframe
+
+
+df_filtrado = aplicar_filtro(
+    df_filtrado,
+    "Posto/ Grad",
+    filtro_posto
+)
+
+df_filtrado = aplicar_filtro(
+    df_filtrado,
+    "OME",
+    filtro_ome
+)
+
+df_filtrado = aplicar_filtro(
+    df_filtrado,
+    "Atividade",
+    filtro_atividade
+)
+
+df_filtrado = aplicar_filtro(
+    df_filtrado,
+    "Município",
+    filtro_municipio
+)
+
+df_filtrado = aplicar_filtro(
+    df_filtrado,
+    "Região",
+    filtro_regiao
+)
+
+df_filtrado = aplicar_filtro(
+    df_filtrado,
+    "SEXO",
+    filtro_sexo
+)
+
+df_filtrado = aplicar_filtro(
+    df_filtrado,
+    "Raça/Cor",
+    filtro_raca
+)
+
+df_filtrado = aplicar_filtro(
+    df_filtrado,
+    "ÓRGÃO",
+    filtro_orgao
+)
+
+df_filtrado = aplicar_filtro(
+    df_filtrado,
+    "Poder",
+    filtro_poder
+)
+
+
+# ============================================================
+# INDICADORES
+# ============================================================
+
+st.subheader("📊 Resumo do Efetivo")
+
+m1, m2, m3, m4 = st.columns(4)
+
+with m1:
+    st.metric(
+        "Total na Página1",
+        len(df)
+    )
+
+with m2:
+    st.metric(
+        "Registros filtrados",
+        len(df_filtrado)
+    )
+
+with m3:
+
+    if "OME" in df_filtrado.columns:
+        total_omes = (
+            df_filtrado["OME"]
+            .replace("", pd.NA)
+            .dropna()
+            .nunique()
+        )
+    else:
+        total_omes = 0
+
+    st.metric(
+        "OMEs",
+        total_omes
+    )
+
+with m4:
+
+    if "Posto/ Grad" in df_filtrado.columns:
+        total_postos = (
+            df_filtrado["Posto/ Grad"]
+            .replace("", pd.NA)
+            .dropna()
+            .nunique()
+        )
+    else:
+        total_postos = 0
+
+    st.metric(
+        "Postos/Grad.",
+        total_postos
+    )
+
+
+# ============================================================
+# GRÁFICOS
+# ============================================================
+
+st.markdown("---")
+
+st.subheader("📈 Gráficos")
+
+
+def tabela_contagem(dataframe, coluna):
+
+    if coluna not in dataframe.columns:
+        return pd.DataFrame()
+
+    resultado = (
+        dataframe[coluna]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+
+    resultado = resultado[
+        resultado != ""
+    ]
+
+    if resultado.empty:
+        return pd.DataFrame()
+
+    contagem = (
+        resultado
+        .value_counts()
+        .rename_axis(coluna)
+        .reset_index(name="Quantidade")
+    )
+
+    return contagem
+
+
+g1, g2 = st.columns(2)
+
+
+with g1:
+
+    dados_grafico = tabela_contagem(
+        df_filtrado,
+        "Posto/ Grad"
+    )
+
+    if not dados_grafico.empty:
+
+        st.markdown("### 👮 Efetivo por Posto/Grad.")
+
+        st.bar_chart(
+            dados_grafico.set_index(
+                "Posto/ Grad"
+            )["Quantidade"]
+        )
+
+    else:
+        st.info(
+            "Não há dados para o gráfico de Posto/Grad."
+        )
+
+
+with g2:
+
+    dados_grafico = tabela_contagem(
+        df_filtrado,
+        "OME"
+    )
+
+    if not dados_grafico.empty:
+
+        st.markdown("### 🏢 Efetivo por OME")
+
+        st.bar_chart(
+            dados_grafico.set_index(
+                "OME"
+            )["Quantidade"]
+        )
+
+    else:
+        st.info(
+            "Não há dados para o gráfico de OME."
+        )
+
+
+g3, g4 = st.columns(2)
+
+
+with g3:
+
+    dados_grafico = tabela_contagem(
+        df_filtrado,
+        "Município"
+    )
+
+    if not dados_grafico.empty:
+
+        st.markdown("### 📍 Efetivo por Município")
+
+        st.bar_chart(
+            dados_grafico.set_index(
+                "Município"
+            )["Quantidade"]
+        )
+
+    else:
+        st.info(
+            "Não há dados para o gráfico de Município."
+        )
+
+
+with g4:
+
+    dados_grafico = tabela_contagem(
+        df_filtrado,
+        "Atividade"
+    )
+
+    if not dados_grafico.empty:
+
+        st.markdown("### 🧑‍💼 Efetivo por Atividade")
+
+        st.bar_chart(
+            dados_grafico.set_index(
+                "Atividade"
+            )["Quantidade"]
+        )
+
+    else:
+        st.info(
+            "Não há dados para o gráfico de Atividade."
+        )
+
+
+g5, g6 = st.columns(2)
+
+
+with g5:
+
+    dados_grafico = tabela_contagem(
+        df_filtrado,
+        "SEXO"
+    )
+
+    if not dados_grafico.empty:
+
+        st.markdown("### 👥 Distribuição por Sexo")
+
+        st.bar_chart(
+            dados_grafico.set_index(
+                "SEXO"
+            )["Quantidade"]
+        )
+
+    else:
+        st.info(
+            "Não há dados para o gráfico de Sexo."
+        )
+
+
+with g6:
+
+    dados_grafico = tabela_contagem(
+        df_filtrado,
+        "Região"
+    )
+
+    if not dados_grafico.empty:
+
+        st.markdown("### 🗺️ Efetivo por Região")
+
+        st.bar_chart(
+            dados_grafico.set_index(
+                "Região"
+            )["Quantidade"]
+        )
+
+    else:
+        st.info(
+            "Não há dados para o gráfico de Região."
+        )
+
+
+# ============================================================
+# VISUALIZAÇÃO DOS REGISTROS
+# ============================================================
+
+st.markdown("---")
+
+st.subheader("📋 Visualização dos Registros")
+
 st.caption(
-    f"Conectado diretamente à aba Página1 • "
-    f"{len(df)} registros • "
-    f"{len(headers)} colunas"
+    f"Página1 • {len(df_filtrado)} registros exibidos "
+    f"de {len(df)} totais • {len(headers)} colunas"
 )
 
 st.dataframe(
-    df,
+    df_filtrado,
     use_container_width=True,
     hide_index=True
 )
-
-st.markdown("---")
 
 
 # ============================================================
 # NOVO CADASTRO
 # ============================================================
+
+st.markdown("---")
 
 with st.expander(
     "➕ **Novo Cadastro de Militar**",
@@ -1288,24 +1664,16 @@ with st.expander(
             ).strip()
 
             if not matricula:
-
                 st.error(
                     "❌ Informe a Matrícula."
                 )
-
                 st.stop()
 
             if not nome:
-
                 st.error(
                     "❌ Informe o Nome."
                 )
-
                 st.stop()
-
-            # -----------------------------------------------
-            # VERIFICA MATRÍCULA EXISTENTE
-            # -----------------------------------------------
 
             linha_existente = (
                 localizar_linha_por_matricula(
@@ -1317,16 +1685,12 @@ with st.expander(
             if linha_existente:
 
                 st.error(
-                    f"❌ A matrícula "
-                    f"**{matricula}** já existe "
-                    f"na linha {linha_existente}."
+                    f"❌ A matrícula **{matricula}** "
+                    f"já existe na linha "
+                    f"{linha_existente}."
                 )
 
                 st.stop()
-
-            # -----------------------------------------------
-            # MONTA LINHA
-            # -----------------------------------------------
 
             nova_linha = montar_linha(
                 headers,
@@ -1336,26 +1700,11 @@ with st.expander(
             if len(nova_linha) != len(headers):
 
                 st.error(
-                    "❌ Erro interno: quantidade "
-                    "de dados diferente da quantidade "
-                    "de colunas."
-                )
-
-                st.write(
-                    "Colunas:",
-                    len(headers)
-                )
-
-                st.write(
-                    "Dados:",
-                    len(nova_linha)
+                    "❌ Quantidade de dados diferente "
+                    "da quantidade de colunas."
                 )
 
                 st.stop()
-
-            # -----------------------------------------------
-            # SALVA NOVA LINHA
-            # -----------------------------------------------
 
             worksheet.append_row(
                 nova_linha,
@@ -1400,377 +1749,199 @@ with st.expander(
 
     else:
 
-        if (
-            "Matrícula" not in df.columns
-            or "Nome" not in df.columns
-        ):
+        opcoes = []
 
-            st.error(
-                "A planilha precisa possuir "
-                "as colunas Matrícula e Nome."
-            )
+        for _, linha in df.iterrows():
 
-        else:
+            matricula = texto(
+                linha.get(
+                    "Matrícula",
+                    ""
+                )
+            ).strip()
 
-            opcoes = []
+            nome = texto(
+                linha.get(
+                    "Nome",
+                    ""
+                )
+            ).strip()
 
-            for _, linha in df.iterrows():
+            if matricula:
 
-                matricula = texto(
-                    linha.get(
-                        "Matrícula",
-                        ""
-                    )
-                ).strip()
-
-                nome = texto(
-                    linha.get(
-                        "Nome",
-                        ""
-                    )
-                ).strip()
-
-                if matricula:
-
-                    opcoes.append(
-                        f"{matricula} - {nome}"
-                    )
-
-            selecionado = st.selectbox(
-                "Selecione o militar:",
-                [""] + opcoes,
-                key="militar_edicao"
-            )
-
-            if selecionado:
-
-                matricula_editar = (
-                    selecionado
-                    .split(" - ", 1)[0]
-                    .strip()
+                opcoes.append(
+                    f"{matricula} - {nome}"
                 )
 
-                registros = df[
-                    df["Matrícula"]
-                    .astype(str)
-                    .str.strip()
-                    == matricula_editar
-                ]
+        selecionado = st.selectbox(
+            "Selecione o militar:",
+            [""] + opcoes,
+            key="militar_edicao"
+        )
 
-                if registros.empty:
+        if selecionado:
 
-                    st.error(
-                        "❌ Registro não localizado."
+            matricula_editar = (
+                selecionado
+                .split(" - ", 1)[0]
+                .strip()
+            )
+
+            registros = df[
+                df["Matrícula"]
+                .astype(str)
+                .str.strip()
+                == matricula_editar
+            ]
+
+            if registros.empty:
+
+                st.error(
+                    "❌ Registro não localizado."
+                )
+
+            else:
+
+                dados_atual = (
+                    registros
+                    .iloc[0]
+                    .to_dict()
+                )
+
+                st.info(
+                    "Editando: "
+                    f"**{dados_atual.get('Nome', '')}** "
+                    f"| Matrícula: "
+                    f"**{matricula_editar}**"
+                )
+
+                with st.form(
+                    "form_edicao",
+                    clear_on_submit=False
+                ):
+
+                    dados_editados = criar_formulario(
+                        dados_atual,
+                        "edicao"
                     )
 
-                else:
+                    # Matrícula é a chave
+                    dados_editados[
+                        "Matrícula"
+                    ] = matricula_editar
 
-                    dados_atual = (
-                        registros
-                        .iloc[0]
-                        .to_dict()
+                    atualizar = st.form_submit_button(
+                        "🔄 ATUALIZAR REGISTRO",
+                        type="primary",
+                        use_container_width=True
                     )
 
-                    st.info(
-                        "Editando: "
-                        f"**{dados_atual.get('Nome', '')}** "
-                        f"| Matrícula: "
-                        f"**{matricula_editar}**"
-                    )
+                if atualizar:
 
-                    with st.form(
-                        "form_edicao",
-                        clear_on_submit=False
-                    ):
+                    try:
 
-                        dados_editados = (
-                            criar_formulario(
-                                dados_atual,
-                                "edicao"
+                        row_idx = (
+                            localizar_linha_por_matricula(
+                                worksheet,
+                                matricula_editar
                             )
                         )
 
-                        # ====================================
-                        # MATRÍCULA É A CHAVE
-                        # ====================================
-
-                        dados_editados[
-                            "Matrícula"
-                        ] = matricula_editar
-
-                        atualizar = (
-                            st.form_submit_button(
-                                "🔄 ATUALIZAR REGISTRO",
-                                type="primary",
-                                use_container_width=True
-                            )
-                        )
-
-                    if atualizar:
-
-                        try:
-
-                            # =================================
-                            # LOCALIZA A LINHA NOVAMENTE
-                            # =================================
-
-                            row_idx = (
-                                localizar_linha_por_matricula(
-                                    worksheet,
-                                    matricula_editar
-                                )
-                            )
-
-                            if not row_idx:
-
-                                st.error(
-                                    "❌ A matrícula não foi "
-                                    "encontrada diretamente "
-                                    "na Página1."
-                                )
-
-                                st.stop()
-
-                            # =================================
-                            # NOME ORIGINAL
-                            # =================================
-
-                            nome_anterior = texto(
-                                dados_atual.get(
-                                    "Nome",
-                                    ""
-                                )
-                            ).strip()
-
-                            # =================================
-                            # NOME NOVO
-                            # =================================
-
-                            nome_novo = texto(
-                                dados_editados.get(
-                                    "Nome",
-                                    ""
-                                )
-                            ).strip()
-
-                            # =================================
-                            # PROTEÇÃO DO NOME
-                            # =================================
-
-                            if not nome_novo:
-
-                                nome_novo = (
-                                    nome_anterior
-                                )
-
-                                dados_editados[
-                                    "Nome"
-                                ] = nome_anterior
-
-                            if not nome_novo:
-
-                                st.error(
-                                    "❌ O campo Nome está "
-                                    "vazio. A atualização "
-                                    "foi cancelada para "
-                                    "proteger o cadastro."
-                                )
-
-                                st.stop()
-
-                            # =================================
-                            # PROTEÇÃO DA MATRÍCULA
-                            # =================================
-
-                            dados_editados[
-                                "Matrícula"
-                            ] = matricula_editar
-
-                            # =================================
-                            # MONTA LINHA COMPLETA
-                            # =================================
-
-                            linha_atualizada = (
-                                montar_linha(
-                                    headers,
-                                    dados_editados
-                                )
-                            )
-
-                            # =================================
-                            # CONFERE QUANTIDADE
-                            # =================================
-
-                            if (
-                                len(linha_atualizada)
-                                != len(headers)
-                            ):
-
-                                st.error(
-                                    "❌ Quantidade de campos "
-                                    "incompatível. "
-                                    "Atualização cancelada."
-                                )
-
-                                st.write(
-                                    "Colunas:",
-                                    len(headers)
-                                )
-
-                                st.write(
-                                    "Dados:",
-                                    len(
-                                        linha_atualizada
-                                    )
-                                )
-
-                                st.stop()
-
-                            # =================================
-                            # ENDEREÇO DA LINHA
-                            # =================================
-
-                            ultima_coluna = (
-                                gspread.utils
-                                .rowcol_to_a1(
-                                    row_idx,
-                                    len(headers)
-                                )
-                            )
-
-                            intervalo = (
-                                f"A{row_idx}:"
-                                f"{ultima_coluna}"
-                            )
-
-                            # =================================
-                            # ATUALIZA A LINHA NO GOOGLE
-                            # =================================
-
-                            worksheet.update(
-                                values=[
-                                    linha_atualizada
-                                ],
-                                range_name=intervalo,
-                                value_input_option=(
-                                    "USER_ENTERED"
-                                )
-                            )
-
-                            # =================================
-                            # CONFIRMA A GRAVAÇÃO
-                            # =================================
-
-                            valores_confirmacao = (
-                                worksheet.get_all_values()
-                            )
-
-                            nome_confirmado = ""
-
-                            if valores_confirmacao:
-
-                                cabecalhos_confirmacao = [
-                                    str(x).strip()
-                                    for x in
-                                    valores_confirmacao[0]
-                                ]
-
-                                try:
-
-                                    coluna_nome = (
-                                        cabecalhos_confirmacao
-                                        .index("Nome")
-                                    )
-
-                                    if (
-                                        row_idx - 1
-                                        <
-                                        len(
-                                            valores_confirmacao
-                                        )
-                                    ):
-
-                                        linha_confirmacao = (
-                                            valores_confirmacao[
-                                                row_idx - 1
-                                            ]
-                                        )
-
-                                        if (
-                                            coluna_nome
-                                            <
-                                            len(
-                                                linha_confirmacao
-                                            )
-                                        ):
-
-                                            nome_confirmado = (
-                                                texto(
-                                                    linha_confirmacao[
-                                                        coluna_nome
-                                                    ]
-                                                ).strip()
-                                            )
-
-                                except ValueError:
-
-                                    nome_confirmado = ""
-
-                            # =================================
-                            # VERIFICAÇÃO FINAL
-                            # =================================
-
-                            if (
-                                nome_confirmado
-                                != nome_novo
-                            ):
-
-                                st.error(
-                                    "⚠️ A atualização foi "
-                                    "enviada, mas a conferência "
-                                    "da planilha não confirmou "
-                                    "o Nome esperado."
-                                )
-
-                                st.warning(
-                                    "Confira a linha "
-                                    f"{row_idx} na Página1."
-                                )
-
-                                st.stop()
-
-                            # =================================
-                            # LIMPA CACHE
-                            # =================================
-
-                            st.cache_data.clear()
-
-                            # =================================
-                            # MENSAGEM
-                            # =================================
-
-                            st.session_state[
-                                "mensagem_sucesso"
-                            ] = (
-                                "✅ Registro atualizado "
-                                "com sucesso! "
-                                f"Matrícula: "
-                                f"{matricula_editar} | "
-                                f"Nome: {nome_novo}"
-                            )
-
-                            st.rerun()
-
-                        except Exception as erro:
+                        if not row_idx:
 
                             st.error(
-                                "❌ Erro ao atualizar "
-                                "o registro."
+                                "❌ A matrícula não foi encontrada "
+                                "diretamente na Página1."
                             )
 
-                            st.exception(
-                                erro
+                            st.stop()
+
+                        nome_anterior = texto(
+                            dados_atual.get(
+                                "Nome",
+                                ""
                             )
+                        ).strip()
+
+                        nome_novo = texto(
+                            dados_editados.get(
+                                "Nome",
+                                ""
+                            )
+                        ).strip()
+
+                        # Proteção fundamental
+                        if not nome_novo:
+
+                            st.error(
+                                "❌ O campo Nome ficou vazio. "
+                                "A atualização foi CANCELADA "
+                                "para evitar apagar o cadastro."
+                            )
+
+                            st.stop()
+
+                        linha_atualizada = montar_linha(
+                            headers,
+                            dados_editados
+                        )
+
+                        if (
+                            len(linha_atualizada)
+                            != len(headers)
+                        ):
+
+                            st.error(
+                                "❌ Quantidade de campos incompatível. "
+                                "Atualização cancelada."
+                            )
+
+                            st.stop()
+
+                        # ====================================================
+                        # CORREÇÃO DO ERRO DO F-STRING
+                        # ====================================================
+
+                        ultima_coluna_a1 = (
+                            gspread.utils.rowcol_to_a1(
+                                row_idx,
+                                len(headers)
+                            )
+                        )
+
+                        intervalo = (
+                            f"A{row_idx}:{ultima_coluna_a1}"
+                        )
+
+                        # ====================================================
+                        # ATUALIZA SOMENTE A LINHA CORRETA
+                        # ====================================================
+
+                        worksheet.update(
+                            intervalo,
+                            [linha_atualizada],
+                            value_input_option="USER_ENTERED"
+                        )
+
+                        st.cache_data.clear()
+
+                        st.session_state[
+                            "mensagem_sucesso"
+                        ] = (
+                            "✅ Registro atualizado com sucesso! "
+                            f"Matrícula: {matricula_editar} | "
+                            f"Nome: {nome_novo}"
+                        )
+
+                        st.rerun()
+
+                    except Exception as erro:
+
+                        st.error(
+                            "❌ Erro ao atualizar o registro."
+                        )
+
+                        st.exception(erro)
 
 
 # ============================================================
@@ -1886,10 +2057,8 @@ with st.expander(
                     st.session_state[
                         "mensagem_sucesso"
                     ] = (
-                        "🗑️ Registro excluído "
-                        "com sucesso. "
-                        f"Matrícula: "
-                        f"{matricula_excluir}"
+                        "🗑️ Registro excluído com sucesso. "
+                        f"Matrícula: {matricula_excluir}"
                     )
 
                     st.rerun()
@@ -1900,9 +2069,7 @@ with st.expander(
                         "❌ Erro ao excluir registro."
                     )
 
-                    st.exception(
-                        erro
-                    )
+                    st.exception(erro)
 
 
 # ============================================================
@@ -1934,26 +2101,29 @@ with st.expander(
         len(df)
     )
 
+    st.write(
+        "Registros após filtros:",
+        len(df_filtrado)
+    )
+
     if headers == HEADERS_ESPERADOS:
 
         st.success(
-            "✅ A estrutura da Página1 "
-            "está exatamente de acordo "
-            "com o sistema."
+            "✅ A estrutura da Página1 está "
+            "exatamente de acordo com o sistema."
         )
 
     else:
 
         st.warning(
-            "⚠️ A ordem dos cabeçalhos da "
-            "planilha é diferente da ordem "
-            "original. Isso não impede o "
-            "sistema, pois os dados são "
-            "montados pelo nome do cabeçalho."
+            "⚠️ A ordem dos cabeçalhos é diferente "
+            "da lista original. Isso não impede o "
+            "funcionamento, pois os dados são "
+            "gravados pelo nome do cabeçalho."
         )
 
         st.write(
-            "Cabeçalhos atualmente encontrados:"
+            "Cabeçalhos encontrados:"
         )
 
         for i, header in enumerate(
