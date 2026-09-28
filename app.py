@@ -588,58 +588,63 @@ try:
                                     str(novos_dados_map.get(col_h, "")) for col_h in headers
                                 ]
 
-                                # Atualiza o intervalo completo correspondente à linha
-                                cell_range = f"A{row_idx}:{gspread.utils.rowcol_to_a1(row_idx, len(headers))}"
-                                sheet.update(cell_range, [linha_atualizada])
+                                # Atualiza toda a linha correspondente de uma só vez no Google Sheets
+                                sheet.update(f"A{row_idx}", [linha_atualizada])
 
                                 st.success(f"✅ Dados do militar **{e_nome}** atualizados com sucesso!")
                                 st.cache_data.clear()
                                 st.rerun()
+
                             else:
-                                st.error("❌ Matrícula não localizada para atualização.")
+                                st.error(f"❌ Matrícula {matricula_editar} não foi encontrada na planilha.")
 
-                        except Exception as err_update:
-                            st.error(f"❌ Erro ao atualizar o registro no Google Sheets: {err_update}")
+                        except Exception as err_edit:
+                            st.error(f"❌ Erro ao atualizar o registro no Google Sheets: {err_edit}")
+
         else:
-            st.info("As colunas 'Matrícula' e 'Nome' são necessárias para utilizar a edição.")
+            st.info("As colunas 'Matrícula' e 'Nome' são necessárias para utilizar o seletor de edição.")
 
     # ==============================================================================
-    # 5. EXIBIÇÃO DE DADOS E FILTROS INTERATIVOS
+    # 5. VISUALIZAÇÃO E FILTROS DA TABELA DE MILITARES
     # ==============================================================================
-    st.subheader("🔍 Consulta e Filtros de Dados")
+    st.markdown("---")
+    st.subheader("📊 **Consulta de Militares Cadastrados**")
 
+    # Filtros Rápidos
     col_f1, col_f2, col_f3 = st.columns(3)
+
     with col_f1:
-        busca_termo = st.text_input("🔎 Buscar por Nome ou Matrícula:")
+        busca_nome = st.text_input("🔍 Buscar por Nome ou Matrícula:")
     with col_f2:
         if "OME" in df.columns:
-            omes_unicos = ["Todas"] + sorted(list(df["OME"].astype(str).unique()))
-            filtro_ome = st.selectbox("Filtrar por OME:", omes_unicos)
+            omes_unicas = ["Todas"] + sorted([str(x) for x in df["OME"].unique() if str(x) != "-"])
+            filtro_ome = st.selectbox("Filtrar por OME:", omes_unicas)
         else:
             filtro_ome = "Todas"
     with col_f3:
         if "Posto/ Grad" in df.columns:
-            postos_unicos = ["Todos"] + sorted(list(df["Posto/ Grad"].astype(str).unique()))
-            filtro_posto = st.selectbox("Filtrar por Posto/Grad:", postos_unicos)
+            postos_unicos = ["Todos"] + sorted([str(x) for x in df["Posto/ Grad"].unique() if str(x) != "-"])
+            filtro_posto = st.selectbox("Filtrar por Posto/Graduação:", postos_unicos)
         else:
             filtro_posto = "Todos"
 
+    # Aplicação dos Filtros no Dataframe
     df_exibicao = df.copy()
 
-    if busca_termo:
-        df_exibicao = df_exibicao[
-            df_exibicao["Nome"].astype(str).str.contains(busca_termo, case=False, na=False)
-            | df_exibicao["Matrícula"].astype(str).str.contains(busca_termo, case=False, na=False)
-        ]
+    if busca_nome:
+        mask_nome = df_exibicao["Nome"].astype(str).str.contains(busca_nome, case=False, na=False) if "Nome" in df_exibicao.columns else False
+        mask_mat = df_exibicao["Matrícula"].astype(str).str.contains(busca_nome, case=False, na=False) if "Matrícula" in df_exibicao.columns else False
+        df_exibicao = df_exibicao[mask_nome | mask_mat]
 
-    if filtro_ome != "Todas":
+    if filtro_ome != "Todas" and "OME" in df_exibicao.columns:
         df_exibicao = df_exibicao[df_exibicao["OME"].astype(str) == filtro_ome]
 
-    if filtro_posto != "Todos":
+    if filtro_posto != "Todos" and "Posto/ Grad" in df_exibicao.columns:
         df_exibicao = df_exibicao[df_exibicao["Posto/ Grad"].astype(str) == filtro_posto]
 
-    st.markdown(f"**Total de registros encontrados:** {len(df_exibicao)}")
-    st.dataframe(df_exibicao, use_container_width=True, height=450)
+    # Exibição do total e tabela
+    st.caption(f"Exibindo **{len(df_exibicao)}** de **{len(df)}** registros.")
+    st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
 
 except Exception as e:
-    st.error(f"❌ Ocorreu um erro no carregamento da aplicação: {e}")
+    st.error(f"❌ Ocorreu um erro ao carregar o aplicativo: {e}")
