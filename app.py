@@ -696,180 +696,649 @@ try:
 
     st.markdown("---")
 
-    # ========================================================
-    # 1. NOVO CADASTRO
-    # ========================================================
-    with st.expander(
-        "➕ **Novo Cadastro de Militar**",
-        expanded=False
-    ):
+  # ========================================================
+# 1. NOVO CADASTRO
+# ========================================================
+with st.expander(
+    "➕ **Novo Cadastro de Militar**",
+    expanded=False
+):
 
-        st.info(
-            "Preencha os dados abaixo e clique em "
-            "**Salvar Novo Cadastro**."
-        )
-
-        with st.form(
-            "form_novo_cadastro",
-            clear_on_submit=False
-        ):
-
-            novos_dados = formulario_militar(
-                dados=None,
-                prefixo="novo"
-            )
-
-            btn_salvar = st.form_submit_button(
-                "💾 Salvar Novo Cadastro",
-                type="primary",
-                use_container_width=True
-            )
-
-            if btn_salvar:
-
-                try:
-
-                    # ----------------------------------------
-                    # VALIDAÇÃO DA MATRÍCULA
-                    # ----------------------------------------
-                    matricula_nova = (
-                        str(
-                            novos_dados.get(
-                                "Matrícula",
-                                ""
-                            )
-                        )
-                        .strip()
-                    )
-
-                    nome_novo = (
-                        str(
-                            novos_dados.get(
-                                "Nome",
-                                ""
-                            )
-                        )
-                        .strip()
-                    )
-
-                    if not matricula_nova:
-                        st.error(
-                            "❌ A Matrícula é obrigatória."
-                        )
-                        st.stop()
-
-                    if not nome_novo:
-                        st.error(
-                            "❌ O Nome é obrigatório."
-                        )
-                        st.stop()
-
-                    # ----------------------------------------
-                    # CONECTA AO GOOGLE SHEETS
-                    # ----------------------------------------
-                    client = get_gspread_client()
-
-                    sheet = client.open_by_key(
-                        SHEET_ID
-                    ).sheet1
-
-                    # ----------------------------------------
-                    # PEGA CABEÇALHOS REAIS DA PLANILHA
-                    # ----------------------------------------
-                    headers = sheet.row_values(1)
-
-                    if not headers:
-                        st.error(
-                            "❌ Não foi possível encontrar "
-                            "os cabeçalhos da planilha."
-                        )
-                        st.stop()
-
-                    # ----------------------------------------
-                    # VERIFICA SE MATRÍCULA JÁ EXISTE
-                    # ----------------------------------------
-                    if "Matrícula" in headers:
-
-                        col_matricula = (
-                            headers.index("Matrícula") + 1
-                        )
-
-                        valores_matricula = sheet.col_values(
-                            col_matricula
-                        )
-
-                        matriculas_existentes = [
-                            str(v).strip()
-                            for v in valores_matricula[1:]
-                            if str(v).strip()
-                        ]
-
-                        if matricula_nova in matriculas_existentes:
-                            st.error(
-                                f"❌ A matrícula "
-                                f"**{matricula_nova}** "
-                                f"já está cadastrada."
-                            )
-                            st.stop()
-
-                    # ----------------------------------------
-                    # MONTA A NOVA LINHA NA MESMA ORDEM
-                    # DOS CABEÇALHOS DA PLANILHA
-                    # ----------------------------------------
-                    nova_linha = [
-                        str(
-                            novos_dados.get(
-                                coluna,
-                                ""
-                            )
-                        )
-                        for coluna in headers
-                    ]
-
-                    # ----------------------------------------
-                    # INSERE A NOVA LINHA
-                    # ----------------------------------------
-                    st.write("DEBUG - Matrícula:", matricula_nova)
-st.write("DEBUG - Nome:", nome_novo)
-st.write("DEBUG - Cabeçalhos:", headers)
-st.write("DEBUG - Quantidade de colunas:", len(headers))
-st.write("DEBUG - Quantidade de dados:", len(nova_linha))
-st.write("DEBUG - Dados que serão enviados:", nova_linha)
-
-try:
-    resultado = sheet.append_row(
-        nova_linha,
-        value_input_option="USER_ENTERED"
+    st.info(
+        "Preencha os dados abaixo e depois clique em "
+        "**💾 SALVAR NOVO CADASTRO**."
     )
 
-    st.success("✅ Google Sheets aceitou o novo cadastro!")
-    st.write("Resposta do Google:", resultado)
+    # --------------------------------------------------------
+    # CAMPOS DO NOVO CADASTRO
+    # --------------------------------------------------------
 
-except Exception as erro:
-    st.error("❌ O Google Sheets recusou o cadastro.")
-    st.exception(erro)
+    tab_pessoal, tab_lotacao, tab_cessao, tab_ltip, tab_outros = st.tabs(
+        [
+            "👤 Identificação & Pessoal",
+            "🏢 Lotação & Promoção",
+            "🔄 Cessão & Movimentação",
+            "⏳ LTIP & Afastamentos",
+            "📝 Documentos & Observações",
+        ]
+    )
 
-                    # ----------------------------------------
-                    # SUCESSO
-                    # ----------------------------------------
-                    st.success(
-                        f"✅ Novo cadastro da Matrícula "
-                        f"**{matricula_nova}** salvo "
-                        f"com sucesso!"
-                    )
+    # ========================================================
+    # ABA 1
+    # ========================================================
+    with tab_pessoal:
 
-                    # Limpa cache
-                    st.cache_data.clear()
+        c1, c2, c3 = st.columns(3)
 
-                    # Atualiza a aplicação
-                    st.rerun()
+        with c1:
 
-                except Exception as err_novo:
+            novo_num_funcional = st.text_input(
+                "nº Funcional:",
+                key="novo_num_funcional"
+            )
 
-                    st.error(
-                        "❌ Erro ao salvar novo cadastro "
-                        f"no Google Sheets:\n\n{err_novo}"
-                    )
+            novo_matricula = st.text_input(
+                "Matrícula:",
+                key="novo_matricula"
+            )
+
+            novo_cpf_ponto = st.text_input(
+                "CPF.:",
+                key="novo_cpf_ponto"
+            )
+
+            novo_cpf = st.text_input(
+                "CPF:",
+                key="novo_cpf"
+            )
+
+            novo_num_ident = st.text_input(
+                "Nº IDENT.:",
+                key="novo_num_ident"
+            )
+
+        with c2:
+
+            novo_nome = st.text_input(
+                "Nome:",
+                key="novo_nome"
+            )
+
+            novo_nome_guerra = st.text_input(
+                "Nome de Guerra:",
+                key="novo_nome_guerra"
+            )
+
+            novo_sexo = st.selectbox(
+                "SEXO:",
+                ["", "MASCULINO", "FEMININO"],
+                key="novo_sexo"
+            )
+
+            novo_raca = st.selectbox(
+                "Raça/Cor:",
+                [
+                    "",
+                    "BRANCA",
+                    "PRETA",
+                    "PARDA",
+                    "AMARELA",
+                    "INDÍGENA"
+                ],
+                key="novo_raca"
+            )
+
+        with c3:
+
+            novo_posto_grad = st.text_input(
+                "Posto/ Grad:",
+                key="novo_posto_grad"
+            )
+
+            novo_fones = st.text_input(
+                "Fones:",
+                key="novo_fones"
+            )
+
+            novo_ano_ingresso = st.text_input(
+                "Ano de ingresso:",
+                key="novo_ano_ingresso"
+            )
+
+            novo_data_praca = st.text_input(
+                "Data de praça:",
+                key="novo_data_praca"
+            )
+
+    # ========================================================
+    # ABA 2
+    # ========================================================
+    with tab_lotacao:
+
+        c1, c2, c3 = st.columns(3)
+
+        with c1:
+
+            novo_ome = st.text_input(
+                "OME:",
+                key="novo_ome"
+            )
+
+            novo_ome_qod = st.text_input(
+                "OME QOD:",
+                key="novo_ome_qod"
+            )
+
+            novo_atividade = st.text_input(
+                "Atividade:",
+                key="novo_atividade"
+            )
+
+            novo_municipio = st.text_input(
+                "Município:",
+                key="novo_municipio"
+            )
+
+            novo_regiao = st.text_input(
+                "Região:",
+                key="novo_regiao"
+            )
+
+        with c2:
+
+            novo_tempo_servico_anos = st.text_input(
+                "Tempo de serviço (anos):",
+                key="novo_tempo_servico_anos"
+            )
+
+            novo_tempo_servico_amd = st.text_input(
+                "Tempo de serviço (ano, mês, dias):",
+                key="novo_tempo_servico_amd"
+            )
+
+            novo_tempo_servico_dias = st.text_input(
+                "Tempo de serviço (dias):",
+                key="novo_tempo_servico_dias"
+            )
+
+            novo_tempo_obm_atual = st.text_input(
+                "Tempo na OBM atual:",
+                key="novo_tempo_obm_atual"
+            )
+
+        with c3:
+
+            novo_data_ult_promocao = st.text_input(
+                "Data da última promoção ou Implant. PCNH:",
+                key="novo_data_ult_promocao"
+            )
+
+            novo_principio_ult_promocao = st.text_input(
+                "Princípio da última promoção:",
+                key="novo_principio_ult_promocao"
+            )
+
+            novo_tempo_posto_atual_dias = st.text_input(
+                "Tempo no Posto/Grad. atual EM DIAS:",
+                key="novo_tempo_posto_atual_dias"
+            )
+
+    # ========================================================
+    # ABA 3
+    # ========================================================
+    with tab_cessao:
+
+        c1, c2, c3 = st.columns(3)
+
+        with c1:
+
+            novo_data_mov_sp = st.text_input(
+                "Data da Movimentação em SP:",
+                key="novo_data_mov_sp"
+            )
+
+            novo_ome_anterior = st.text_input(
+                "OME ANTERIOR AO ÚLTIMO SP PUBLICADO:",
+                key="novo_ome_anterior"
+            )
+
+            novo_data_chegada = st.text_input(
+                "Data de chegada na OBM Anteior:",
+                key="novo_data_chegada"
+            )
+
+            novo_movimentado = st.text_input(
+                "Movimentado (apagar antes de atualizar o SP):",
+                key="novo_movimentado"
+            )
+
+        with c2:
+
+            novo_orgao = st.text_input(
+                "ÓRGÃO:",
+                key="novo_orgao"
+            )
+
+            novo_poder = st.text_input(
+                "Poder:",
+                key="novo_poder"
+            )
+
+            novo_onus = st.selectbox(
+                "Ônus para Origem:",
+                ["", "SIM", "NÃO"],
+                key="novo_onus"
+            )
+
+            novo_inicio_cessao = st.text_input(
+                "Início da Cessão ou requisição:",
+                key="novo_inicio_cessao"
+            )
+
+        with c3:
+
+            novo_renovacao = st.text_input(
+                "Renovação de cessão - Atos/Portarias/Documentos:",
+                key="novo_renovacao"
+            )
+
+            novo_doe = st.text_input(
+                "DOE/BGSDS de renovação:",
+                key="novo_doe"
+            )
+
+            novo_sei = st.text_input(
+                "SEI deslig.:",
+                key="novo_sei"
+            )
+
+    # ========================================================
+    # ABA 4
+    # ========================================================
+    with tab_ltip:
+
+        c1, c2 = st.columns(2)
+
+        with c1:
+
+            novo_afastamentos = st.text_area(
+                "Processo RR e AFASTAMENTOS SUP. A 90 DIAS "
+                "ININTERRUPTOS, PUBLICADOS EM SP:",
+                key="novo_afastamentos"
+            )
+
+            novo_inicio_ltip = st.text_input(
+                "INÍCIO DA LTIP:",
+                key="novo_inicio_ltip"
+            )
+
+            novo_termino_ltip = st.text_input(
+                "TÉRMINO DA LTIP (inserir data de apresentação):",
+                key="novo_termino_ltip"
+            )
+
+        with c2:
+
+            novo_somatorio_anos = st.text_input(
+                "Somatório LTIP gozada em anos:",
+                key="novo_somatorio_anos"
+            )
+
+            novo_somatorio_amd = st.text_input(
+                "Somatório LTIP gozada em anos/meses/dias:",
+                key="novo_somatorio_amd"
+            )
+
+            novo_somatorio_dias = st.text_input(
+                "Somatório de todas LTIP gozadas em dias:",
+                key="novo_somatorio_dias"
+            )
+
+            novo_total_ltip = st.text_input(
+                "TOTAL DIAS EM LTIP no MESMO Posto/Grad.:",
+                key="novo_total_ltip"
+            )
+
+    # ========================================================
+    # ABA 5
+    # ========================================================
+    with tab_outros:
+
+        c1, c2 = st.columns(2)
+
+        with c1:
+
+            novo_ato = st.text_input(
+                "Ato:",
+                key="novo_ato"
+            )
+
+            novo_doc_publicacao = st.text_input(
+                "Doc. Publicação:",
+                key="novo_doc_publicacao"
+            )
+
+            novo_sp_adicao = st.text_input(
+                "SP da Adição:",
+                key="novo_sp_adicao"
+            )
+
+            novo_processo_rr = st.text_input(
+                "Processo RR:",
+                key="novo_processo_rr"
+            )
+
+        with c2:
+
+            novo_suplemento = st.text_input(
+                "Suplemento de Pessoal nº/Ano:",
+                key="novo_suplemento"
+            )
+
+            novo_data_suplemento = st.text_input(
+                "Data Suplemento de Pessoal:",
+                key="novo_data_suplemento"
+            )
+
+            novo_hoje = st.text_input(
+                "Hoje:",
+                key="novo_hoje"
+            )
+
+            novo_obs = st.text_area(
+                "OBS:",
+                key="novo_obs"
+            )
+
+    # ========================================================
+    # DADOS DO NOVO MILITAR
+    # ========================================================
+    novos_dados = {
+        "nº Funcional": novo_num_funcional,
+        "Matrícula": novo_matricula,
+        "CPF.": novo_cpf_ponto,
+        "CPF": novo_cpf,
+        "Nº IDENT.": novo_num_ident,
+        "Nome": novo_nome,
+        "Nome de Guerra": novo_nome_guerra,
+        "SEXO": novo_sexo,
+        "Raça/Cor": novo_raca,
+        "Posto/ Grad": novo_posto_grad,
+        "Fones": novo_fones,
+        "Ano de ingresso": novo_ano_ingresso,
+        "Data de praça": novo_data_praca,
+        "OME": novo_ome,
+        "OME QOD": novo_ome_qod,
+        "Atividade": novo_atividade,
+        "Município": novo_municipio,
+        "Região": novo_regiao,
+        "Tempo de serviço (anos)": novo_tempo_servico_anos,
+        "Tempo de serviço (ano, mês, dias)": novo_tempo_servico_amd,
+        "Tempo de serviço (dias)": novo_tempo_servico_dias,
+        "Tempo na OBM atual": novo_tempo_obm_atual,
+        "Data da última promoção ou Implant. PCNH": novo_data_ult_promocao,
+        "Princípio da última promoção": novo_principio_ult_promocao,
+        "Tempo no Posto/Grad. atual EM DIAS": novo_tempo_posto_atual_dias,
+        "Data da Movimentação em SP": novo_data_mov_sp,
+        "OME ANTERIOR AO ÚLTIMO SP PUBLICADO": novo_ome_anterior,
+        "Data de chegada na OBM Anteior": novo_data_chegada,
+        "Movimentado (apagar antes de atualizar o SP)": novo_movimentado,
+        "ÓRGÃO": novo_orgao,
+        "Poder": novo_poder,
+        "Ônus para Origem": novo_onus,
+        "Início da Cessão ou requisição": novo_inicio_cessao,
+        "Renovação de cessão - Atos/Portarias/Documentos": novo_renovacao,
+        "DOE/BGSDS de renovação": novo_doe,
+        "SEI deslig.": novo_sei,
+        "Processo RR e AFASTAMENTOS SUP. A 90 DIAS ININTERRUPTOS, PUBLICADOS EM SP": novo_afastamentos,
+        "INÍCIO DA LTIP": novo_inicio_ltip,
+        "TÉRMINO DA LTIP (inserir data de apresentação)": novo_termino_ltip,
+        "Somatório LTIP gozada em anos": novo_somatorio_anos,
+        "Somatório LTIP gozada em anos/meses/dias": novo_somatorio_amd,
+        "Somatório de todas LTIP gozadas em dias": novo_somatorio_dias,
+        "TOTAL DIAS EM LTIP no MESMO Posto/Grad.": novo_total_ltip,
+        "Ato": novo_ato,
+        "Doc. Publicação": novo_doc_publicacao,
+        "SP da Adição": novo_sp_adicao,
+        "Processo RR": novo_processo_rr,
+        "Suplemento de Pessoal nº/Ano": novo_suplemento,
+        "Data Suplemento de Pessoal": novo_data_suplemento,
+        "Hoje": novo_hoje,
+        "OBS": novo_obs,
+    }
+
+    # ========================================================
+    # BOTÃO DE SALVAR
+    # ========================================================
+    st.markdown("---")
+
+    salvar_novo = st.button(
+        "💾 SALVAR NOVO CADASTRO",
+        type="primary",
+        use_container_width=True,
+        key="salvar_novo_cadastro"
+    )
+
+    # ========================================================
+    # PROCESSAMENTO DO SALVAMENTO
+    # ========================================================
+    if salvar_novo:
+
+        st.info("⏳ Iniciando salvamento...")
+
+        try:
+
+            # ------------------------------------------------
+            # 1. VERIFICA MATRÍCULA
+            # ------------------------------------------------
+            matricula_nova = str(
+                novos_dados["Matrícula"]
+            ).strip()
+
+            nome_novo = str(
+                novos_dados["Nome"]
+            ).strip()
+
+            if not matricula_nova:
+                st.error(
+                    "❌ Informe a Matrícula antes de salvar."
+                )
+                st.stop()
+
+            if not nome_novo:
+                st.error(
+                    "❌ Informe o Nome antes de salvar."
+                )
+                st.stop()
+
+            st.write(
+                f"🔎 Matrícula informada: **{matricula_nova}**"
+            )
+
+            # ------------------------------------------------
+            # 2. CONECTA AO GOOGLE
+            # ------------------------------------------------
+            st.write("🔄 Conectando ao Google Sheets...")
+
+            client = get_gspread_client()
+
+            st.write("✅ Autenticação realizada.")
+
+            # ------------------------------------------------
+            # 3. ABRE A PLANILHA
+            # ------------------------------------------------
+            st.write("📄 Abrindo a planilha...")
+
+            spreadsheet = client.open_by_key(
+                SHEET_ID
+            )
+
+            st.write(
+                f"✅ Planilha encontrada: "
+                f"**{spreadsheet.title}**"
+            )
+
+            # ------------------------------------------------
+            # 4. ABRE A PRIMEIRA ABA
+            # ------------------------------------------------
+            sheet = spreadsheet.sheet1
+
+            st.write(
+                f"📑 Aba utilizada: **{sheet.title}**"
+            )
+
+            # ------------------------------------------------
+            # 5. LÊ OS CABEÇALHOS
+            # ------------------------------------------------
+            headers = sheet.row_values(1)
+
+            if not headers:
+                st.error(
+                    "❌ A primeira linha da planilha "
+                    "não possui cabeçalhos."
+                )
+                st.stop()
+
+            st.write(
+                f"✅ {len(headers)} colunas encontradas."
+            )
+
+            # ------------------------------------------------
+            # 6. CONFERE MATRÍCULA
+            # ------------------------------------------------
+            if "Matrícula" not in headers:
+
+                st.error(
+                    "❌ A coluna **Matrícula** não foi "
+                    "encontrada na primeira linha da planilha."
+                )
+
+                st.write(
+                    "Cabeçalhos encontrados:"
+                )
+
+                st.write(headers)
+
+                st.stop()
+
+            coluna_matricula = (
+                headers.index("Matrícula") + 1
+            )
+
+            valores_matricula = sheet.col_values(
+                coluna_matricula
+            )
+
+            matriculas_existentes = [
+                str(valor).strip()
+                for valor in valores_matricula[1:]
+                if str(valor).strip()
+            ]
+
+            if matricula_nova in matriculas_existentes:
+
+                st.error(
+                    f"❌ A matrícula "
+                    f"**{matricula_nova}** "
+                    f"já existe na planilha."
+                )
+
+                st.stop()
+
+            # ------------------------------------------------
+            # 7. MONTA A NOVA LINHA
+            # ------------------------------------------------
+            nova_linha = []
+
+            for coluna in headers:
+
+                valor = novos_dados.get(
+                    coluna,
+                    ""
+                )
+
+                if valor is None:
+                    valor = ""
+
+                nova_linha.append(
+                    str(valor)
+                )
+
+            st.write(
+                f"📝 Preparando {len(nova_linha)} "
+                f"valores para gravação..."
+            )
+
+            # ------------------------------------------------
+            # 8. VERIFICA TAMANHO
+            # ------------------------------------------------
+            if len(nova_linha) != len(headers):
+
+                st.error(
+                    "❌ A quantidade de dados não "
+                    "corresponde à quantidade de colunas."
+                )
+
+                st.write(
+                    "Colunas:",
+                    len(headers)
+                )
+
+                st.write(
+                    "Dados:",
+                    len(nova_linha)
+                )
+
+                st.stop()
+
+            # ------------------------------------------------
+            # 9. GRAVA NO GOOGLE SHEETS
+            # ------------------------------------------------
+            st.write(
+                "💾 Gravando novo cadastro..."
+            )
+
+            sheet.append_row(
+                nova_linha,
+                value_input_option="USER_ENTERED"
+            )
+
+            # ------------------------------------------------
+            # 10. CONFIRMAÇÃO
+            # ------------------------------------------------
+            st.success(
+                f"🎉 NOVO CADASTRO SALVO COM SUCESSO!\n\n"
+                f"Matrícula: **{matricula_nova}**\n\n"
+                f"Nome: **{nome_novo}**"
+            )
+
+            # ------------------------------------------------
+            # 11. LIMPA CACHE
+            # ------------------------------------------------
+            st.cache_data.clear()
+
+            st.balloons()
+
+            st.info(
+                "🔄 Atualizando a visualização..."
+            )
+
+            # Pequeno botão para atualizar manualmente
+            # caso seja necessário verificar a gravação
+            if st.button(
+                "🔄 Atualizar dados agora",
+                key="atualizar_apos_cadastro"
+            ):
+                st.rerun()
+
+        except Exception as erro:
+
+            st.error(
+                "❌ Ocorreu um erro durante o salvamento."
+            )
+
+            st.exception(erro)
+
 
     # ========================================================
     # 2. EDIÇÃO DE REGISTRO
