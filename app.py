@@ -106,8 +106,6 @@ try:
     df = load_data(SHEET_ID)
     df_filtrado = df.copy()
 
-   
-
     # ==============================================================================
     # 2. FORMULÁRIO DE CADASTRO DE NOVOS REGISTROS (50 CAMPOS)
     # ==============================================================================
@@ -260,17 +258,92 @@ try:
                 "💾 Salvar Registro Completo na Planilha"
             )
 
-       # ==============================================================================
-    # 🗑️ SEÇÃO DE EXCLUSÃO DE REGISTROS
+            if btn_salvar:
+                if not matricula.strip():
+                    st.error("❌ O campo **Matrícula** é obrigatório para cadastrar um novo militar.")
+                else:
+                    try:
+                        client = get_gspread_client()
+                        sheet = client.open_by_key(SHEET_ID).sheet1
+                        headers = sheet.row_values(1)
+
+                        # Mapeamento dos valores inseridos no formulário
+                        novo_registro_map = {
+                            "nº Funcional": num_funcional,
+                            "Matrícula": matricula,
+                            "CPF.": cpf_ponto,
+                            "CPF": cpf,
+                            "Nº IDENT.": num_ident,
+                            "Nome": nome,
+                            "Nome de Guerra": nome_guerra,
+                            "SEXO": sexo,
+                            "Raça/Cor": raca_cor,
+                            "Posto/ Grad": posto_grad,
+                            "Fones": fones,
+                            "Ano de ingresso": ano_ingresso,
+                            "Data de praça": str(data_praca) if data_praca else "",
+                            "OME": ome,
+                            "OME QOD": ome_qod,
+                            "Atividade": atividade,
+                            "Município": municipio,
+                            "Região": regiao,
+                            "Tempo de serviço (anos)": tempo_servico_anos,
+                            "Tempo de serviço (ano, mês, dias)": tempo_servico_amd,
+                            "Tempo de serviço (dias)": tempo_servico_dias,
+                            "Tempo na OBM atual": tempo_obm_atual,
+                            "Data da última promoção ou Implant. PCNH": str(data_ult_promocao) if data_ult_promocao else "",
+                            "Princípio da última promoção": principio_ult_promocao,
+                            "Tempo no Posto/Grad. atual EM DIAS": tempo_posto_atual_dias,
+                            "Data da Movimentação em SP": str(data_mov_sp) if data_mov_sp else "",
+                            "OME ANTERIOR AO ÚLTIMO SP PUBLICADO": ome_anterior,
+                            "Data de chegada na OBM Anteior": str(data_chegada_obm_anterior) if data_chegada_obm_anterior else "",
+                            "Movimentado (apagar antes de atualizar o SP)": movimentado,
+                            "ÓRGÃO": orgao,
+                            "Poder": poder,
+                            "Ônus para Origem": onus_origem,
+                            "Início da Cessão ou requisição": str(inicio_cessao) if inicio_cessao else "",
+                            "Renovação de cessão - Atos/Portarias/Documentos": renovacao_cessao_atos,
+                            "DOE/BGSDS de renovação": doe_bgsds_renovacao,
+                            "SEI deslig.": sei_deslig,
+                            "Processo RR e AFASTAMENTOS SUP. A 90 DIAS ININTERRUPTOS, PUBLICADOS EM SP": afastamentos_sup_90,
+                            "INÍCIO DA LTIP": str(inicio_ltip) if inicio_ltip else "",
+                            "TÉRMINO DA LTIP (inserir data de apresentação)": str(termino_ltip) if termino_ltip else "",
+                            "Somatório LTIP gozada em anos": somatorio_ltip_anos,
+                            "Somatório LTIP gozada em anos/meses/dias": somatorio_ltip_amd,
+                            "Somatório de todas LTIP gozadas em dias": somatorio_ltip_dias,
+                            "TOTAL DIAS EM LTIP no MESMO Posto/Grad.": total_dias_ltip_posto,
+                            "Ato": ato,
+                            "Doc. Publicação": doc_publicacao,
+                            "SP da Adição": sp_adicao,
+                            "Processo RR": processo_rr,
+                            "Suplemento de Pessoal nº/Ano": suplemento_pessoal_num_ano,
+                            "Data Suplemento de Pessoal": str(data_suplemento_pessoal) if data_suplemento_pessoal else "",
+                            "Hoje": str(hoje_data) if hoje_data else "",
+                            "OBS": obs,
+                        }
+
+                        # Constrói a linha de inserção com base na ordem exata do cabeçalho
+                        linha_para_inserir = [
+                            str(novo_registro_map.get(col_h, "")) for col_h in headers
+                        ]
+
+                        sheet.append_row(linha_para_inserir)
+                        st.success(f"✅ Registro do militar **{nome}** (Matrícula: {matricula}) inserido com sucesso!")
+                        st.cache_data.clear()
+                        st.rerun()
+
+                    except Exception as err_add:
+                        st.error(f"❌ Erro ao adicionar novo registro na planilha: {err_add}")
+
+    # ==============================================================================
+    # 3. SEÇÃO DE EXCLUSÃO DE REGISTROS
     # ==============================================================================
     with st.expander("🗑️ **Excluir Registro da Planilha**", expanded=False):
         st.warning(
             "⚠️ **Atenção:** A exclusão removerá o registro diretamente da planilha do Google Sheets e não poderá ser desfeita."
         )
 
-        # Seleção do militar a ser removido (usando Matrícula + Nome)
         if "Matrícula" in df.columns and "Nome" in df.columns:
-            # Lista de opções formatadas
             opcoes_militares = df.apply(
                 lambda r: f"{r['Matrícula']} - {r['Nome']}", axis=1
             ).tolist()
@@ -280,17 +353,14 @@ try:
             )
 
             if militar_selecionado:
-                # Extrai a matrícula selecionada
                 matricula_alvo = militar_selecionado.split(" - ")[0].strip()
 
-                # Exibe prévia do registro a ser excluído
                 registro_alvo = df[
                     df["Matrícula"].astype(str) == matricula_alvo
                 ]
                 st.write("**Dados do registro selecionado:**")
                 st.dataframe(registro_alvo, use_container_width=True)
 
-                # Botão de confirmação com chave única
                 confirmar = st.checkbox(
                     "Confirmo que desejo excluir permanentemente este registro."
                 )
@@ -302,12 +372,9 @@ try:
                     try:
                         client = get_gspread_client()
                         sheet = client.open_by_key(SHEET_ID).sheet1
-
-                        # Localiza a célula que contém a matrícula na planilha
                         cell = sheet.find(matricula_alvo)
 
                         if cell:
-                            # Deleta a linha exata encontrada no Google Sheets
                             sheet.delete_rows(cell.row)
                             st.success(
                                 f"✅ Registro da Matrícula **{matricula_alvo}** excluído com sucesso!"
@@ -328,26 +395,24 @@ try:
                 "As colunas 'Matrícula' e 'Nome' são necessárias para utilizar o seletor de exclusão."
             )
 
-
     # ==============================================================================
-    # ✏️ SEÇÃO DE EDIÇÃO DE REGISTROS
+    # 4. SEÇÃO DE EDIÇÃO DE REGISTROS
     # ==============================================================================
     with st.expander("✏️ **Editar Registro Existente**", expanded=False):
         if "Matrícula" in df.columns and "Nome" in df.columns:
             opcoes_militares_edicao = df.apply(
                 lambda r: f"{r['Matrícula']} - {r['Nome']}", axis=1
             ).tolist()
-            
+
             militar_selecionado_edicao = st.selectbox(
                 "Selecione o militar que deseja editar:",
                 [""] + opcoes_militares_edicao,
-                key="seletor_militar_edicao"
+                key="seletor_militar_edicao",
             )
 
             if militar_selecionado_edicao:
                 matricula_editar = militar_selecionado_edicao.split(" - ")[0].strip()
-                
-                # Obtém a linha correspondente aos dados atuais do militar
+
                 dados_militar = df[df["Matrícula"].astype(str) == matricula_editar].iloc[0]
 
                 st.info(f"Editando informações de: **{dados_militar.get('Nome', '')}** (Matrícula: {matricula_editar})")
@@ -373,7 +438,7 @@ try:
                         with c2:
                             e_nome = st.text_input("Nome:", value=str(dados_militar.get("Nome", "")))
                             e_nome_guerra = st.text_input("Nome de Guerra:", value=str(dados_militar.get("Nome de Guerra", "")))
-                            
+
                             sexo_atual = str(dados_militar.get("SEXO", "")).upper()
                             opcoes_sexo = ["", "MASCULINO", "FEMININO"]
                             idx_sexo = opcoes_sexo.index(sexo_atual) if sexo_atual in opcoes_sexo else 0
@@ -419,12 +484,12 @@ try:
                         with c2:
                             e_orgao = st.text_input("ÓRGÃO:", value=str(dados_militar.get("ÓRGÃO", "")))
                             e_poder = st.text_input("Poder:", value=str(dados_militar.get("Poder", "")))
-                            
+
                             onus_atual = str(dados_militar.get("Ônus para Origem", "")).upper()
                             opcoes_onus = ["", "SIM", "NÃO"]
                             idx_onus = opcoes_onus.index(onus_atual) if onus_atual in opcoes_onus else 0
                             e_onus_origem = st.selectbox("Ônus para Origem:", opcoes_onus, index=idx_onus)
-                            
+
                             e_inicio_cessao = st.text_input("Início da Cessão ou requisição:", value=str(dados_militar.get("Início da Cessão ou requisição", "")))
                         with c3:
                             e_renovacao_cessao_atos = st.text_input("Renovação de cessão - Atos/Portarias/Documentos:", value=str(dados_militar.get("Renovação de cessão - Atos/Portarias/Documentos", "")))
@@ -464,15 +529,12 @@ try:
                         try:
                             client = get_gspread_client()
                             sheet = client.open_by_key(SHEET_ID).sheet1
-
-                            # Localiza a linha do registro através da Matrícula
                             cell = sheet.find(matricula_editar)
 
                             if cell:
                                 row_idx = cell.row
                                 headers = sheet.row_values(1)
 
-                                # Mapeia os dados atualizados aos nomes exatos das colunas da planilha
                                 novos_dados_map = {
                                     "nº Funcional": e_num_funcional,
                                     "Matrícula": e_matricula,
@@ -527,13 +589,11 @@ try:
                                     "OBS": e_obs,
                                 }
 
-                                # Constrói a nova linha respeitando a ordem original do cabeçalho da planilha
                                 nova_linha_valores = [
                                     novos_dados_map.get(col_header, str(dados_militar.get(col_header, "")))
                                     for col_header in headers
                                 ]
 
-                                # Atualiza a linha no Google Sheets em uma única chamada de API
                                 cell_range = f"A{row_idx}:{gspread.utils.rowcol_to_a1(row_idx, len(headers))}"
                                 sheet.update(cell_range, [nova_linha_valores])
 
@@ -547,12 +607,10 @@ try:
                             st.error(f"❌ Erro ao atualizar o registro no Google Sheets: {err_edit}")
         else:
             st.info("As colunas 'Matrícula' e 'Nome' são necessárias para utilizar a edição.")
-    
-    # ==============================================================================
-    # 4. FILTROS E BUSCA POR TEXTO
-    # ==============================================================================
 
-    # Função callback para redefinir todas as seleções de filtro
+    # ==============================================================================
+    # 5. FILTROS E BUSCA POR TEXTO
+    # ==============================================================================
     def limpar_todos_os_filtros():
         st.session_state["termo_busca_key"] = ""
         for col in df.columns:
@@ -567,72 +625,58 @@ try:
     )
 
     if termo_busca:
-        mascara = df_filtrado.astype(str).apply(
-            lambda col: col.str.contains(termo_busca, case=False, na=False)
+        # Pesquisa textual case-insensitive em todas as colunas
+        mascara = df_filtrado.apply(
+            lambda row: row.astype(str).str.contains(termo_busca, case=False, na=False).any(),
+            axis=1,
         )
-        df_filtrado = df_filtrado[mascara.any(axis=1)]
+        df_filtrado = df_filtrado[mascara]
 
-    # --- FILTROS LATERAIS ---
-    st.sidebar.header("🎛️ Filtros por Coluna")
+    # --- FILTROS POR COLUNA ---
+    with st.expander("🛠️ **Filtros Avançados por Coluna**", expanded=False):
+        c_btn, _ = st.columns([1, 4])
+        with c_btn:
+            st.button("🧹 Limpar Todos os Filtros", on_click=limpar_todos_os_filtros)
 
-    # Botão de reset com gatilho no evento on_click
-    st.sidebar.button(
-        "🧹 Limpar Filtros",
-        on_click=limpar_todos_os_filtros,
-        use_container_width=True,
-    )
+        cols_filtros = st.columns(3)
+        for idx, col in enumerate(df.columns):
+            chave_filtro = f"filtro_{col}"
+            if chave_filtro not in st.session_state:
+                st.session_state[chave_filtro] = "Todos"
 
-    for coluna in df.columns:
-        chave_filtro = f"filtro_{coluna}"
+            valores_unicos = ["Todos"] + sorted(
+                [str(val) for val in df[col].unique() if pd.notna(val)]
+            )
+            
+            # Distribuição dos seletores em 3 colunas
+            col_target = cols_filtros[idx % 3]
+            
+            selecao = col_target.selectbox(
+                f"Filtrar {col}:",
+                options=valores_unicos,
+                key=chave_filtro,
+            )
 
-        # Inicializa a chave no session_state caso ainda não exista
-        if chave_filtro not in st.session_state:
-            st.session_state[chave_filtro] = "Todos"
-
-        valores_unicos = df[coluna].dropna().astype(str).unique().tolist()
-        valores_unicos.sort()
-        opcoes = ["Todos"] + valores_unicos
-
-        # Seletor usando a chave prefixada do session_state
-        escolha = st.sidebar.selectbox(
-            f"{coluna}:", opcoes, key=chave_filtro
-        )
-
-        # Aplica o filtro na tabela caso não seja 'Todos'
-        if escolha != "Todos":
-            df_filtrado = df_filtrado[
-                df_filtrado[coluna].astype(str) == escolha
-            ]
+            if selecao != "Todos":
+                df_filtrado = df_filtrado[
+                    df_filtrado[col].astype(str) == selecao
+                ]
 
     # ==============================================================================
-    # 4. MÉTRICAS, TABELA E GRÁFICOS
+    # 6. EXIBIÇÃO TELA PRINCIPAL (MÉTRICAS E TABELA)
     # ==============================================================================
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Militares Filtrados", len(df_filtrado))
-    m2.metric("Total de Militares no Sistema", len(df))
-    m3.metric(
-        "% Exibido",
-        f"{(len(df_filtrado) / len(df)) * 100:.1f}%" if len(df) > 0 else "0%",
-    )
-
     st.markdown("---")
+    c_m1, c_m2 = st.columns(2)
+    with c_m1:
+        st.metric("Total de Militares (Base Total)", len(df))
+    with c_m2:
+        st.metric("Militares Filtrados", len(df_filtrado))
 
-    # Tabela
-    st.subheader("📋 Registros Encontrados")
-    st.dataframe(df_filtrado, use_container_width=True)
-
-    # Gráfico
-    st.subheader("📈 Análise Visual")
-    coluna_grafico = st.selectbox(
-        "Escolha a coluna para o gráfico:", list(df.columns)
+    st.dataframe(
+        df_filtrado,
+        use_container_width=True,
+        hide_index=True,
     )
 
-    if len(df_filtrado) > 0:
-        st.bar_chart(df_filtrado[coluna_grafico].value_counts())
-    else:
-        st.warning("⚠️ Nenhum registro encontrado para gerar o gráfico.")
-
-except KeyError as err_key:
-    st.error(f"❌ Chave ausente nos Secrets: {err_key}")
 except Exception as e:
-    st.error(f"Erro ao carregar ou processar os dados: {e}")
+    st.error(f"❌ Ocorreu um erro ao carregar a aplicação: {e}")
