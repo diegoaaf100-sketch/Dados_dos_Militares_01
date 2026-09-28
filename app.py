@@ -106,20 +106,23 @@ def normalizar_matricula(valor):
 
 def tornar_headers_unicos(headers):
     """
-    Cria nomes internos únicos para o pandas/pyarrow.
+    Transforma cabeçalhos duplicados em nomes internos únicos.
 
     Exemplo:
+
     OME
     OME
     OME
 
     vira:
+
     OME
     OME [2]
     OME [3]
 
     A planilha NÃO é alterada.
     """
+
     usados = {}
     resultado = []
 
@@ -131,11 +134,14 @@ def tornar_headers_unicos(headers):
             base = "COLUNA SEM NOME"
 
         if base not in usados:
+
             usados[base] = 1
             resultado.append(base)
 
         else:
+
             usados[base] += 1
+
             resultado.append(
                 f"{base} [{usados[base]}]"
             )
@@ -144,10 +150,6 @@ def tornar_headers_unicos(headers):
 
 
 def base_header(header):
-    """
-    Retorna o nome original retirando o sufixo
-    utilizado internamente para duplicados.
-    """
 
     valor = texto(header).strip()
 
@@ -216,7 +218,9 @@ def check_password():
     ):
         return True
 
-    st.title("🔒 Acesso Restrito ao Dashboard")
+    st.title(
+        "🔒 Acesso Restrito ao Dashboard"
+    )
 
     col1, col2, col3 = st.columns(
         [1, 2, 1]
@@ -243,7 +247,8 @@ def check_password():
         )
 
         if (
-            "password_correct" in st.session_state
+            "password_correct"
+            in st.session_state
             and not st.session_state[
                 "password_correct"
             ]
@@ -394,6 +399,7 @@ def verificar_estrutura(worksheet):
     for header in headers:
 
         if header in vistos:
+
             if header not in duplicados:
                 duplicados.append(header)
 
@@ -438,6 +444,7 @@ def localizar_coluna(
             contador += 1
 
             if contador == ocorrencia:
+
                 return i + 1
 
     return None
@@ -485,14 +492,13 @@ def localizar_linha_por_matricula(
             )
 
             if atual == procurada:
-
                 return numero_linha
 
     return None
 
 
 # ============================================================
-# DADOS DA LINHA ORIGINAL
+# LINHA ORIGINAL
 # ============================================================
 
 def obter_linha_planilha(
@@ -509,6 +515,7 @@ def obter_linha_planilha(
         return []
 
     headers = valores[0]
+
     linha = list(
         valores[numero_linha - 1]
     )
@@ -531,20 +538,13 @@ def obter_linha_planilha(
 
 
 # ============================================================
-# ATUALIZAÇÃO SEGURA
+# NOVO CADASTRO
 # ============================================================
 
 def montar_linha_nova(
     headers,
     dados
 ):
-
-    """
-    Para NOVO cadastro.
-
-    Cada campo é colocado pela posição
-    do cabeçalho da planilha.
-    """
 
     linha = []
 
@@ -562,23 +562,15 @@ def montar_linha_nova(
     return linha
 
 
+# ============================================================
+# ATUALIZAÇÃO SEGURA
+# ============================================================
+
 def atualizar_linha_com_seguranca(
     headers,
     linha_original,
     dados_editados
 ):
-
-    """
-    IMPORTANTE:
-
-    Começa com a linha ORIGINAL da planilha.
-
-    Depois altera somente os campos que o
-    formulário realmente editou.
-
-    Isso impede que campos que não aparecem
-    no formulário sejam apagados.
-    """
 
     nova_linha = list(
         linha_original
@@ -594,8 +586,6 @@ def atualizar_linha_com_seguranca(
 
     for campo, valor in dados_editados.items():
 
-        # Procura a primeira ocorrência
-        # do cabeçalho original.
         posicao = localizar_coluna(
             headers,
             campo,
@@ -615,7 +605,7 @@ def atualizar_linha_com_seguranca(
 
 
 # ============================================================
-# CAMPOS DO FORMULÁRIO
+# CAMPO DE TEXTO
 # ============================================================
 
 def campo_texto(
@@ -648,6 +638,10 @@ def campo_texto(
     )
 
 
+# ============================================================
+# FORMULÁRIO
+# ============================================================
+
 def criar_formulario(
     dados,
     prefixo
@@ -658,10 +652,6 @@ def criar_formulario(
 
     resultado = {}
 
-    # ========================================================
-    # ABA 1
-    # ========================================================
-
     tab1, tab2, tab3, tab4, tab5 = st.tabs(
         [
             "👤 Identificação & Pessoal",
@@ -671,6 +661,10 @@ def criar_formulario(
             "📝 Documentos & Observações",
         ]
     )
+
+    # ========================================================
+    # ABA 1
+    # ========================================================
 
     with tab1:
 
@@ -884,21 +878,27 @@ def criar_formulario(
 
         with c3:
 
-            resultado["Data da última promoção ou Implant. PCNH"] = campo_texto(
+            resultado[
+                "Data da última promoção ou Implant. PCNH"
+            ] = campo_texto(
                 "Data da última promoção ou Implant. PCNH",
                 dados,
                 f"{prefixo}_promocao_data",
                 "Data da última promoção ou Implant. PCNH"
             )
 
-            resultado["Princípio da última promoção"] = campo_texto(
+            resultado[
+                "Princípio da última promoção"
+            ] = campo_texto(
                 "Princípio da última promoção",
                 dados,
                 f"{prefixo}_promocao_principio",
                 "Princípio da última promoção"
             )
 
-            resultado["Tempo no Posto/Grad. atual EM DIAS"] = campo_texto(
+            resultado[
+                "Tempo no Posto/Grad. atual EM DIAS"
+            ] = campo_texto(
                 "Tempo no Posto/Grad. atual EM DIAS",
                 dados,
                 f"{prefixo}_tempo_posto",
@@ -915,28 +915,36 @@ def criar_formulario(
 
         with c1:
 
-            resultado["Data da Movimentação em SP"] = campo_texto(
+            resultado[
+                "Data da Movimentação em SP"
+            ] = campo_texto(
                 "Data da Movimentação em SP",
                 dados,
                 f"{prefixo}_mov_sp",
                 "Data da Movimentação em SP"
             )
 
-            resultado["OME ANTERIOR AO ÚLTIMO SP PUBLICADO"] = campo_texto(
+            resultado[
+                "OME ANTERIOR AO ÚLTIMO SP PUBLICADO"
+            ] = campo_texto(
                 "OME ANTERIOR AO ÚLTIMO SP PUBLICADO",
                 dados,
                 f"{prefixo}_ome_anterior",
                 "OME ANTERIOR AO ÚLTIMO SP PUBLICADO"
             )
 
-            resultado["Data de chegada na OBM Anteior"] = campo_texto(
+            resultado[
+                "Data de chegada na OBM Anteior"
+            ] = campo_texto(
                 "Data de chegada na OBM Anteior",
                 dados,
                 f"{prefixo}_chegada",
                 "Data de chegada na OBM Anteior"
             )
 
-            resultado["Movimentado (apagar antes de atualizar o SP)"] = campo_texto(
+            resultado[
+                "Movimentado (apagar antes de atualizar o SP)"
+            ] = campo_texto(
                 "Movimentado (apagar antes de atualizar o SP)",
                 dados,
                 f"{prefixo}_movimentado",
@@ -972,7 +980,9 @@ def criar_formulario(
                 "NÃO"
             ]
 
-            resultado["Ônus para Origem"] = st.selectbox(
+            resultado[
+                "Ônus para Origem"
+            ] = st.selectbox(
                 "Ônus para Origem",
                 opcoes_onus,
                 index=(
@@ -985,7 +995,9 @@ def criar_formulario(
                 key=f"{prefixo}_onus"
             )
 
-            resultado["Início da Cessão ou requisição"] = campo_texto(
+            resultado[
+                "Início da Cessão ou requisição"
+            ] = campo_texto(
                 "Início da Cessão ou requisição",
                 dados,
                 f"{prefixo}_inicio_cessao",
@@ -994,21 +1006,27 @@ def criar_formulario(
 
         with c3:
 
-            resultado["Renovação de cessão - Atos/Portarias/Documentos"] = campo_texto(
+            resultado[
+                "Renovação de cessão - Atos/Portarias/Documentos"
+            ] = campo_texto(
                 "Renovação de cessão - Atos/Portarias/Documentos",
                 dados,
                 f"{prefixo}_renovacao",
                 "Renovação de cessão - Atos/Portarias/Documentos"
             )
 
-            resultado["DOE/BGSDS de renovação"] = campo_texto(
+            resultado[
+                "DOE/BGSDS de renovação"
+            ] = campo_texto(
                 "DOE/BGSDS de renovação",
                 dados,
                 f"{prefixo}_doe",
                 "DOE/BGSDS de renovação"
             )
 
-            resultado["SEI deslig."] = campo_texto(
+            resultado[
+                "SEI deslig."
+            ] = campo_texto(
                 "SEI deslig.",
                 dados,
                 f"{prefixo}_sei",
@@ -1035,7 +1053,9 @@ def criar_formulario(
                 tipo="area"
             )
 
-            resultado["INÍCIO DA LTIP"] = campo_texto(
+            resultado[
+                "INÍCIO DA LTIP"
+            ] = campo_texto(
                 "INÍCIO DA LTIP",
                 dados,
                 f"{prefixo}_inicio_ltip",
@@ -1053,28 +1073,36 @@ def criar_formulario(
 
         with c2:
 
-            resultado["Somatório LTIP gozada em anos"] = campo_texto(
+            resultado[
+                "Somatório LTIP gozada em anos"
+            ] = campo_texto(
                 "Somatório LTIP gozada em anos",
                 dados,
                 f"{prefixo}_ltip_anos",
                 "Somatório LTIP gozada em anos"
             )
 
-            resultado["Somatório LTIP gozada em anos/meses/dias"] = campo_texto(
+            resultado[
+                "Somatório LTIP gozada em anos/meses/dias"
+            ] = campo_texto(
                 "Somatório LTIP gozada em anos/meses/dias",
                 dados,
                 f"{prefixo}_ltip_amd",
                 "Somatório LTIP gozada em anos/meses/dias"
             )
 
-            resultado["Somatório de todas LTIP gozadas em dias"] = campo_texto(
+            resultado[
+                "Somatório de todas LTIP gozadas em dias"
+            ] = campo_texto(
                 "Somatório de todas LTIP gozadas em dias",
                 dados,
                 f"{prefixo}_ltip_dias",
                 "Somatório de todas LTIP gozadas em dias"
             )
 
-            resultado["TOTAL DIAS EM LTIP no MESMO Posto/Grad."] = campo_texto(
+            resultado[
+                "TOTAL DIAS EM LTIP no MESMO Posto/Grad."
+            ] = campo_texto(
                 "TOTAL DIAS EM LTIP no MESMO Posto/Grad.",
                 dados,
                 f"{prefixo}_total_ltip",
@@ -1098,28 +1126,36 @@ def criar_formulario(
                 "Ato"
             )
 
-            resultado["Doc. Publicação"] = campo_texto(
+            resultado[
+                "Doc. Publicação"
+            ] = campo_texto(
                 "Doc. Publicação",
                 dados,
                 f"{prefixo}_doc",
                 "Doc. Publicação"
             )
 
-            resultado["SP da Adição"] = campo_texto(
+            resultado[
+                "SP da Adição"
+            ] = campo_texto(
                 "SP da Adição",
                 dados,
                 f"{prefixo}_sp",
                 "SP da Adição"
             )
 
-            resultado["Suplemento de Pessoal nº/Ano"] = campo_texto(
+            resultado[
+                "Suplemento de Pessoal nº/Ano"
+            ] = campo_texto(
                 "Suplemento de Pessoal nº/Ano",
                 dados,
                 f"{prefixo}_suplemento",
                 "Suplemento de Pessoal nº/Ano"
             )
 
-            resultado["Data Suplemento de Pessoal"] = campo_texto(
+            resultado[
+                "Data Suplemento de Pessoal"
+            ] = campo_texto(
                 "Data Suplemento de Pessoal",
                 dados,
                 f"{prefixo}_data_suplemento",
@@ -1147,12 +1183,96 @@ def criar_formulario(
 
 
 # ============================================================
+# FUNÇÕES DOS FILTROS
+# ============================================================
+
+def valores_coluna(
+    dataframe,
+    coluna
+):
+
+    if coluna not in dataframe.columns:
+        return []
+
+    valores = (
+        dataframe[coluna]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+
+    valores = [
+        x
+        for x in valores.unique()
+        if x
+    ]
+
+    return sorted(
+        valores,
+        key=lambda x: x.upper()
+    )
+
+
+def aplicar_multiselect(
+    dataframe,
+    coluna,
+    valores
+):
+
+    if not valores:
+        return dataframe
+
+    if coluna not in dataframe.columns:
+        return dataframe
+
+    serie = (
+        dataframe[coluna]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+
+    return dataframe[
+        serie.isin(valores)
+    ]
+
+
+def aplicar_filtro_texto(
+    dataframe,
+    coluna,
+    termo
+):
+
+    if not termo:
+        return dataframe
+
+    if coluna not in dataframe.columns:
+        return dataframe
+
+    serie = (
+        dataframe[coluna]
+        .fillna("")
+        .astype(str)
+        .str.lower()
+    )
+
+    return dataframe[
+        serie.str.contains(
+            termo.lower(),
+            regex=False,
+            na=False
+        )
+    ]
+
+
+# ============================================================
 # SIDEBAR
 # ============================================================
 
 st.sidebar.success(
     "✅ Autenticado com sucesso!"
 )
+
 
 if st.sidebar.button(
     "🚪 Sair / Logout",
@@ -1187,20 +1307,25 @@ col1, col2, col3, col4 = st.columns(
 with col2:
 
     try:
+
         st.image(
             "images.png",
             width=140
         )
+
     except Exception:
         pass
+
 
 with col3:
 
     try:
+
         st.image(
             "11679.png",
             width=140
         )
+
     except Exception:
         pass
 
@@ -1266,7 +1391,7 @@ if duplicados:
 
 
 # ============================================================
-# MENSAGEM
+# MENSAGEM DE SUCESSO
 # ============================================================
 
 if st.session_state.get(
@@ -1289,202 +1414,151 @@ if st.session_state.get(
 # ============================================================
 
 st.sidebar.markdown("---")
-st.sidebar.header("🔎 Filtros")
 
-
-# ------------------------------------------------------------
-# BUSCA GERAL
-# ------------------------------------------------------------
-
-busca = st.sidebar.text_input(
-    "🔍 Buscar",
-    placeholder="Digite nome, matrícula, OME..."
+st.sidebar.header(
+    "🔎 Filtros"
 )
 
-
-# ------------------------------------------------------------
-# FILTRO POSTO
-# ------------------------------------------------------------
-
-def valores_coluna(
-    df,
-    coluna
-):
-
-    if coluna not in df.columns:
-        return []
-
-    valores = (
-        df[coluna]
-        .fillna("")
-        .astype(str)
-        .str.strip()
-    )
-
-    valores = [
-        x
-        for x in valores.unique()
-        if x
-    ]
-
-    return sorted(
-        valores,
-        key=lambda x: x.upper()
-    )
-
-
-postos = valores_coluna(
-    df,
-    "Posto/ Grad"
-)
-
-filtro_posto = st.sidebar.multiselect(
-    "Posto/ Grad",
-    postos
-)
-
-
-# ------------------------------------------------------------
-# OME
-# ------------------------------------------------------------
-
-omes = valores_coluna(
-    df,
-    "OME"
-)
-
-filtro_ome = st.sidebar.multiselect(
-    "OME",
-    omes
-)
-
-
-# ------------------------------------------------------------
-# MUNICÍPIO
-# ------------------------------------------------------------
-
-municipios = valores_coluna(
-    df,
-    "Município"
-)
-
-filtro_municipio = st.sidebar.multiselect(
-    "Município",
-    municipios
-)
-
-
-# ------------------------------------------------------------
-# REGIÃO
-# ------------------------------------------------------------
-
-regioes = valores_coluna(
-    df,
-    "Região"
-)
-
-filtro_regiao = st.sidebar.multiselect(
-    "Região",
-    regioes
-)
-
-
-# ------------------------------------------------------------
-# SEXO
-# ------------------------------------------------------------
-
-sexos = valores_coluna(
-    df,
-    "SEXO"
-)
-
-filtro_sexo = st.sidebar.multiselect(
-    "SEXO",
-    sexos
-)
-
-
-# ------------------------------------------------------------
-# ATIVIDADE
-# ------------------------------------------------------------
-
-atividades = valores_coluna(
-    df,
-    "Atividade"
-)
-
-filtro_atividade = st.sidebar.multiselect(
-    "Atividade",
-    atividades
+st.sidebar.caption(
+    "Use os filtros abaixo para localizar "
+    "qualquer registro."
 )
 
 
 # ============================================================
-# APLICA FILTROS
+# BUSCA GERAL
+# ============================================================
+
+busca = st.sidebar.text_input(
+    "🔍 Busca geral",
+    placeholder=(
+        "Nome, matrícula, CPF, OME..."
+    ),
+    key="busca_geral"
+)
+
+
+# ============================================================
+# FILTROS POR COLUNA
+# ============================================================
+
+filtros_colunas = {}
+
+
+for indice, coluna in enumerate(
+    df.columns
+):
+
+    valores = valores_coluna(
+        df,
+        coluna
+    )
+
+    if len(valores) <= 100:
+
+        selecionados = st.sidebar.multiselect(
+            f"📌 {coluna}",
+            valores,
+            key=f"filtro_coluna_{indice}"
+        )
+
+        filtros_colunas[
+            coluna
+        ] = selecionados
+
+    else:
+
+        termo_coluna = st.sidebar.text_input(
+            f"🔎 {coluna}",
+            placeholder="Digite para filtrar...",
+            key=f"filtro_texto_coluna_{indice}"
+        )
+
+        filtros_colunas[
+            coluna
+        ] = termo_coluna
+
+
+# ============================================================
+# BOTÃO LIMPAR FILTROS
+# ============================================================
+
+st.sidebar.markdown("---")
+
+
+if st.sidebar.button(
+    "🧹 LIMPAR TODOS OS FILTROS",
+    use_container_width=True
+):
+
+    chaves_para_limpar = []
+
+    for chave in st.session_state:
+
+        if (
+            chave.startswith(
+                "filtro_coluna_"
+            )
+            or chave.startswith(
+                "filtro_texto_coluna_"
+            )
+        ):
+
+            chaves_para_limpar.append(
+                chave
+            )
+
+    chaves_para_limpar.append(
+        "busca_geral"
+    )
+
+    for chave in chaves_para_limpar:
+
+        if chave in st.session_state:
+
+            del st.session_state[
+                chave
+            ]
+
+    st.rerun()
+
+
+# ============================================================
+# APLICAÇÃO DOS FILTROS
 # ============================================================
 
 df_filtrado = df.copy()
 
 
-def aplicar_multiselect(
-    df_original,
-    coluna,
-    valores
-):
+# ------------------------------------------------------------
+# FILTROS DE CADA COLUNA
+# ------------------------------------------------------------
 
-    if not valores:
-        return df_original
+for coluna, filtro in filtros_colunas.items():
 
-    if coluna not in df_original.columns:
-        return df_original
+    if isinstance(filtro, list):
 
-    return df_original[
-        df_original[coluna]
-        .fillna("")
-        .astype(str)
-        .isin(valores)
-    ]
+        if filtro:
 
+            df_filtrado = aplicar_multiselect(
+                df_filtrado,
+                coluna,
+                filtro
+            )
 
-df_filtrado = aplicar_multiselect(
-    df_filtrado,
-    "Posto/ Grad",
-    filtro_posto
-)
+    else:
 
-df_filtrado = aplicar_multiselect(
-    df_filtrado,
-    "OME",
-    filtro_ome
-)
+        if filtro:
 
-df_filtrado = aplicar_multiselect(
-    df_filtrado,
-    "Município",
-    filtro_municipio
-)
-
-df_filtrado = aplicar_multiselect(
-    df_filtrado,
-    "Região",
-    filtro_regiao
-)
-
-df_filtrado = aplicar_multiselect(
-    df_filtrado,
-    "SEXO",
-    filtro_sexo
-)
-
-df_filtrado = aplicar_multiselect(
-    df_filtrado,
-    "Atividade",
-    filtro_atividade
-)
+            df_filtrado = aplicar_filtro_texto(
+                df_filtrado,
+                coluna,
+                filtro
+            )
 
 
 # ============================================================
-# BUSCA DIGITADA
+# BUSCA GERAL
 # ============================================================
 
 if busca.strip():
@@ -1507,7 +1581,8 @@ if busca.strip():
             .str.lower()
             .str.contains(
                 termo,
-                regex=False
+                regex=False,
+                na=False
             )
         )
 
@@ -1517,34 +1592,7 @@ if busca.strip():
 
 
 # ============================================================
-# BOTÃO LIMPAR FILTROS
-# ============================================================
-
-if st.sidebar.button(
-    "🧹 Limpar filtros",
-    use_container_width=True
-):
-
-    chaves = [
-        "busca",
-    ]
-
-    for chave in list(
-        st.session_state.keys()
-    ):
-
-        if chave.startswith(
-            "filtro_"
-        ):
-            del st.session_state[
-                chave
-            ]
-
-    st.rerun()
-
-
-# ============================================================
-# INDICADORES
+# RESUMO
 # ============================================================
 
 st.subheader(
@@ -1553,6 +1601,7 @@ st.subheader(
 
 m1, m2, m3, m4 = st.columns(4)
 
+
 with m1:
 
     st.metric(
@@ -1560,12 +1609,14 @@ with m1:
         len(df)
     )
 
+
 with m2:
 
     st.metric(
         "🔎 Registros filtrados",
         len(df_filtrado)
     )
+
 
 with m3:
 
@@ -1585,6 +1636,7 @@ with m3:
             "🏢 OME",
             0
         )
+
 
 with m4:
 
@@ -1610,14 +1662,30 @@ with m4:
 # GRÁFICOS
 # ============================================================
 
+st.markdown("---")
+
 st.subheader(
     "📈 Gráficos"
 )
 
+st.caption(
+    "Os gráficos abaixo são recalculados automaticamente "
+    "de acordo com os filtros laterais."
+)
+
+
 graf1, graf2 = st.columns(2)
 
 
+# ============================================================
+# GRÁFICO POSTO
+# ============================================================
+
 with graf1:
+
+    st.markdown(
+        "### 🎖️ Militares por Posto/Grad."
+    )
 
     if (
         "Posto/ Grad" in df_filtrado.columns
@@ -1630,11 +1698,31 @@ with graf1:
             ]
             .replace("", "Não informado")
             .value_counts()
-            .head(20)
         )
 
-        st.markdown(
-            "### 🎖️ Militares por Posto/Grad."
+        quantidade_posto = st.slider(
+            "Quantidade de Postos/Grad. exibidos",
+            min_value=5,
+            max_value=min(
+                50,
+                max(
+                    5,
+                    len(contagem_posto)
+                )
+            ),
+            value=min(
+                15,
+                max(
+                    5,
+                    len(contagem_posto)
+                )
+            ),
+            key="quantidade_grafico_posto"
+        )
+
+        contagem_posto = (
+            contagem_posto
+            .head(quantidade_posto)
         )
 
         st.bar_chart(
@@ -1644,12 +1732,19 @@ with graf1:
     else:
 
         st.info(
-            "Não há dados suficientes "
-            "para o gráfico de Posto/Grad."
+            "Não há dados para o gráfico."
         )
 
 
+# ============================================================
+# GRÁFICO OME
+# ============================================================
+
 with graf2:
+
+    st.markdown(
+        "### 🏢 Militares por OME"
+    )
 
     if (
         "OME" in df_filtrado.columns
@@ -1662,11 +1757,31 @@ with graf2:
             ]
             .replace("", "Não informado")
             .value_counts()
-            .head(20)
         )
 
-        st.markdown(
-            "### 🏢 Militares por OME"
+        quantidade_ome = st.slider(
+            "Quantidade de OMEs exibidas",
+            min_value=5,
+            max_value=min(
+                50,
+                max(
+                    5,
+                    len(contagem_ome)
+                )
+            ),
+            value=min(
+                15,
+                max(
+                    5,
+                    len(contagem_ome)
+                )
+            ),
+            key="quantidade_grafico_ome"
+        )
+
+        contagem_ome = (
+            contagem_ome
+            .head(quantidade_ome)
         )
 
         st.bar_chart(
@@ -1676,9 +1791,111 @@ with graf2:
     else:
 
         st.info(
-            "Não há dados suficientes "
-            "para o gráfico de OME."
+            "Não há dados para o gráfico."
         )
+
+
+# ============================================================
+# GRÁFICOS ADICIONAIS
+# ============================================================
+
+graf3, graf4 = st.columns(2)
+
+
+# ============================================================
+# GRÁFICO MUNICÍPIO
+# ============================================================
+
+with graf3:
+
+    st.markdown(
+        "### 📍 Militares por Município"
+    )
+
+    if (
+        "Município" in df_filtrado.columns
+        and not df_filtrado.empty
+    ):
+
+        contagem_municipio = (
+            df_filtrado[
+                "Município"
+            ]
+            .replace("", "Não informado")
+            .value_counts()
+            .head(20)
+        )
+
+        st.bar_chart(
+            contagem_municipio
+        )
+
+    else:
+
+        st.info(
+            "Não há dados para o gráfico."
+        )
+
+
+# ============================================================
+# GRÁFICO REGIÃO
+# ============================================================
+
+with graf4:
+
+    st.markdown(
+        "### 🗺️ Militares por Região"
+    )
+
+    if (
+        "Região" in df_filtrado.columns
+        and not df_filtrado.empty
+    ):
+
+        contagem_regiao = (
+            df_filtrado[
+                "Região"
+            ]
+            .replace("", "Não informado")
+            .value_counts()
+            .head(20)
+        )
+
+        st.bar_chart(
+            contagem_regiao
+        )
+
+    else:
+
+        st.info(
+            "Não há dados para o gráfico."
+        )
+
+
+# ============================================================
+# GRÁFICO SEXO
+# ============================================================
+
+if (
+    "SEXO" in df_filtrado.columns
+    and not df_filtrado.empty
+):
+
+    st.markdown(
+        "### 👤 Distribuição por Sexo"
+    )
+
+    contagem_sexo = (
+        df_filtrado[
+            "SEXO"
+        ]
+        .replace("", "Não informado")
+        .value_counts()
+    )
+
+    st.bar_chart(
+        contagem_sexo
+    )
 
 
 # ============================================================
@@ -1697,10 +1914,12 @@ st.caption(
     f"{len(headers)} colunas"
 )
 
+
 st.dataframe(
     df_filtrado,
     use_container_width=True,
-    hide_index=True
+    hide_index=True,
+    height=600
 )
 
 
@@ -1985,20 +2204,12 @@ with st.expander(
 
                                 st.stop()
 
-                            # --------------------------------
-                            # RECUPERA A LINHA ORIGINAL
-                            # --------------------------------
-
                             linha_original = (
                                 obter_linha_planilha(
                                     worksheet,
                                     row_idx
                                 )
                             )
-
-                            # --------------------------------
-                            # ALTERA SOMENTE CAMPOS DO FORM
-                            # --------------------------------
 
                             linha_atualizada = (
                                 atualizar_linha_com_seguranca(
@@ -2008,10 +2219,6 @@ with st.expander(
                                 )
                             )
 
-                            # --------------------------------
-                            # VERIFICAÇÃO FINAL
-                            # --------------------------------
-
                             if (
                                 len(linha_atualizada)
                                 != len(headers)
@@ -2019,15 +2226,10 @@ with st.expander(
 
                                 st.error(
                                     "❌ Quantidade de colunas "
-                                    "incompatível. Atualização "
-                                    "cancelada."
+                                    "incompatível."
                                 )
 
                                 st.stop()
-
-                            # --------------------------------
-                            # GARANTE QUE O NOME NÃO SUMIU
-                            # --------------------------------
 
                             coluna_nome = localizar_coluna(
                                 headers,
@@ -2053,14 +2255,10 @@ with st.expander(
                                 st.error(
                                     "❌ PROTEÇÃO ATIVADA: "
                                     "o Nome ficaria vazio. "
-                                    "A atualização foi cancelada."
+                                    "Atualização cancelada."
                                 )
 
                                 st.stop()
-
-                            # --------------------------------
-                            # INTERVALO CORRETO
-                            # --------------------------------
 
                             primeira_celula = (
                                 gspread.utils.rowcol_to_a1(
