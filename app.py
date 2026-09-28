@@ -1,10 +1,10 @@
+import streamlit as st
+
 st.title("🚨 TESTE NOVA VERSÃO - 28/09/2026")
 
 import gspread
 from google.oauth2.service_account import Credentials
 import pandas as pd
-import streamlit as st
-from datetime import datetime
 
 # ============================================================
 # CONFIGURAÇÃO
