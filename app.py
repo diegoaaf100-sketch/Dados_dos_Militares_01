@@ -262,7 +262,7 @@ try:
                 else:
                     try:
                         client = get_gspread_client()
-                        sheet = client.open_by_key(SHEET_ID).sheet1
+                        sheet = client.open_by_key(SHEET_ID).(Página1)
                         headers = sheet.row_values(1)
 
                         novo_registro_map = {
@@ -367,7 +367,7 @@ try:
                 if btn_excluir:
                     try:
                         client = get_gspread_client()
-                        sheet = client.open_by_key(SHEET_ID).sheet1
+                        sheet = client.open_by_key(SHEET_ID).(Página1)
                         cell = sheet.find(matricula_alvo)
 
                         if cell:
@@ -523,7 +523,7 @@ try:
                     if btn_atualizar:
                         try:
                             client = get_gspread_client()
-                            sheet = client.open_by_key(SHEET_ID).sheet1
+                            sheet = client.open_by_key(SHEET_ID).(Página1)
                             cell = sheet.find(matricula_editar)
 
                             if cell:
