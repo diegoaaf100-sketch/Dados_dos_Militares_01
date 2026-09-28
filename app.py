@@ -829,10 +829,25 @@ try:
                     # ----------------------------------------
                     # INSERE A NOVA LINHA
                     # ----------------------------------------
-                    sheet.append_row(
-                        nova_linha,
-                        value_input_option="USER_ENTERED"
-                    )
+                    st.write("DEBUG - Matrícula:", matricula_nova)
+st.write("DEBUG - Nome:", nome_novo)
+st.write("DEBUG - Cabeçalhos:", headers)
+st.write("DEBUG - Quantidade de colunas:", len(headers))
+st.write("DEBUG - Quantidade de dados:", len(nova_linha))
+st.write("DEBUG - Dados que serão enviados:", nova_linha)
+
+try:
+    resultado = sheet.append_row(
+        nova_linha,
+        value_input_option="USER_ENTERED"
+    )
+
+    st.success("✅ Google Sheets aceitou o novo cadastro!")
+    st.write("Resposta do Google:", resultado)
+
+except Exception as erro:
+    st.error("❌ O Google Sheets recusou o cadastro.")
+    st.exception(erro)
 
                     # ----------------------------------------
                     # SUCESSO
