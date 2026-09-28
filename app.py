@@ -365,7 +365,8 @@ def obter_headers_planilha(worksheet):
     if not headers:
 
         raise ValueError(
-            "A primeira linha da Página1 está vazia."
+            "A primeira linha da Página1 "
+            "está vazia."
         )
 
     return headers
@@ -476,6 +477,7 @@ def localizar_linha_por_matricula(
             )
 
             if atual == procurada:
+
                 return numero_linha
 
     return None
@@ -589,7 +591,7 @@ def atualizar_linha_com_seguranca(
 
 
 # ============================================================
-# CAMPO DE FORMULÁRIO
+# CAMPOS DO FORMULÁRIO
 # ============================================================
 
 def campo_texto(
@@ -621,10 +623,6 @@ def campo_texto(
         key=chave
     )
 
-
-# ============================================================
-# FORMULÁRIO
-# ============================================================
 
 def criar_formulario(
     dados,
@@ -1008,9 +1006,7 @@ def criar_formulario(
                 "DOE/BGSDS de renovação"
             )
 
-            resultado[
-                "SEI deslig."
-            ] = campo_texto(
+            resultado["SEI deslig."] = campo_texto(
                 "SEI deslig.",
                 dados,
                 f"{prefixo}_sei",
@@ -1110,18 +1106,14 @@ def criar_formulario(
                 "Ato"
             )
 
-            resultado[
-                "Doc. Publicação"
-            ] = campo_texto(
+            resultado["Doc. Publicação"] = campo_texto(
                 "Doc. Publicação",
                 dados,
                 f"{prefixo}_doc",
                 "Doc. Publicação"
             )
 
-            resultado[
-                "SP da Adição"
-            ] = campo_texto(
+            resultado["SP da Adição"] = campo_texto(
                 "SP da Adição",
                 dados,
                 f"{prefixo}_sp",
@@ -1167,7 +1159,7 @@ def criar_formulario(
 
 
 # ============================================================
-# SIDEBAR
+# SIDEBAR - CONTROLES
 # ============================================================
 
 st.sidebar.success(
@@ -1207,25 +1199,20 @@ col1, col2, col3, col4 = st.columns(
 with col2:
 
     try:
-
         st.image(
             "images.png",
             width=140
         )
-
     except Exception:
         pass
-
 
 with col3:
 
     try:
-
         st.image(
             "11679.png",
             width=140
         )
-
     except Exception:
         pass
 
@@ -1275,8 +1262,8 @@ if duplicados:
 
     st.warning(
         "⚠️ A Página1 possui cabeçalhos duplicados. "
-        "O Dashboard continuará funcionando e NÃO "
-        "alterará os cabeçalhos da planilha."
+        "O Dashboard tratará essas colunas internamente "
+        "sem alterar a planilha."
     )
 
     with st.expander(
@@ -1310,7 +1297,33 @@ if st.session_state.get(
 
 
 # ============================================================
-# FUNÇÃO PARA VALORES DAS COLUNAS
+# FILTROS LATERAIS
+# ============================================================
+
+st.sidebar.markdown("---")
+
+st.sidebar.header(
+    "🔎 Filtros"
+)
+
+st.sidebar.caption(
+    "Use os filtros abaixo para refinar "
+    "os registros e atualizar os gráficos."
+)
+
+
+# ============================================================
+# BUSCA GERAL
+# ============================================================
+
+busca = st.sidebar.text_input(
+    "🔍 Busca geral",
+    placeholder="Nome, matrícula, OME..."
+)
+
+
+# ============================================================
+# FUNÇÃO PARA OBTER VALORES
 # ============================================================
 
 def valores_coluna(
@@ -1341,120 +1354,113 @@ def valores_coluna(
 
 
 # ============================================================
-# FILTROS LATERAIS
+# FILTRO INDIVIDUAL PARA CADA COLUNA
 # ============================================================
 
-st.sidebar.markdown("---")
-
-st.sidebar.header(
-    "🔎 Filtros"
-)
+filtros_colunas = {}
 
 
-# ============================================================
-# BUSCA GERAL
-# ============================================================
+with st.sidebar.expander(
+    "📋 Filtros por coluna",
+    expanded=True
+):
 
-busca = st.sidebar.text_input(
-    "🔍 Buscar em todas as colunas",
-    placeholder="Digite nome, matrícula, OME..."
-)
+    for indice, coluna in enumerate(
+        df.columns
+    ):
 
+        valores = valores_coluna(
+            df,
+            coluna
+        )
 
-# ============================================================
-# FILTRO POSTO
-# ============================================================
+        if not valores:
+            continue
 
-postos = valores_coluna(
-    df,
-    "Posto/ Grad"
-)
+        # ----------------------------------------------------
+        # Chave interna segura
+        # ----------------------------------------------------
 
-filtro_posto = st.sidebar.multiselect(
-    "🎖️ Posto/ Grad",
-    postos,
-    key="filtro_posto"
-)
+        chave = (
+            "filtro_coluna_"
+            + str(indice)
+        )
 
+        # ----------------------------------------------------
+        # Para colunas com poucos valores:
+        # MULTISELECT
+        # ----------------------------------------------------
 
-# ============================================================
-# FILTRO OME
-# ============================================================
+        if len(valores) <= 100:
 
-omes = valores_coluna(
-    df,
-    "OME"
-)
+            selecionados = st.multiselect(
+                coluna,
+                valores,
+                key=chave,
+                placeholder="Todos"
+            )
 
-filtro_ome = st.sidebar.multiselect(
-    "🏢 OME",
-    omes,
-    key="filtro_ome"
-)
+            filtros_colunas[coluna] = (
+                selecionados
+            )
 
+        # ----------------------------------------------------
+        # Para colunas com muitos valores:
+        # BUSCA POR TEXTO
+        # ----------------------------------------------------
 
-# ============================================================
-# FILTRO MUNICÍPIO
-# ============================================================
+        else:
 
-municipios = valores_coluna(
-    df,
-    "Município"
-)
+            texto_filtro = st.text_input(
+                coluna,
+                key=chave,
+                placeholder="Digite para filtrar..."
+            )
 
-filtro_municipio = st.sidebar.multiselect(
-    "🏙️ Município",
-    municipios,
-    key="filtro_municipio"
-)
-
-
-# ============================================================
-# FILTRO REGIÃO
-# ============================================================
-
-regioes = valores_coluna(
-    df,
-    "Região"
-)
-
-filtro_regiao = st.sidebar.multiselect(
-    "🗺️ Região",
-    regioes,
-    key="filtro_regiao"
-)
+            filtros_colunas[coluna] = (
+                texto_filtro
+            )
 
 
 # ============================================================
-# FILTRO SEXO
+# LIMPAR FILTROS
 # ============================================================
 
-sexos = valores_coluna(
-    df,
-    "SEXO"
-)
+if st.sidebar.button(
+    "🧹 LIMPAR TODOS OS FILTROS",
+    use_container_width=True
+):
 
-filtro_sexo = st.sidebar.multiselect(
-    "👤 SEXO",
-    sexos,
-    key="filtro_sexo"
-)
+    # Remove somente as chaves de filtros
+    # para não interferir no restante do sistema.
 
+    chaves_remover = []
 
-# ============================================================
-# FILTRO ATIVIDADE
-# ============================================================
+    for chave in st.session_state.keys():
 
-atividades = valores_coluna(
-    df,
-    "Atividade"
-)
+        if chave.startswith(
+            "filtro_coluna_"
+        ):
 
-filtro_atividade = st.sidebar.multiselect(
-    "💼 Atividade",
-    atividades,
-    key="filtro_atividade"
-)
+            chaves_remover.append(
+                chave
+            )
+
+    for chave in chaves_remover:
+
+        del st.session_state[
+            chave
+        ]
+
+    # Limpa a busca geral.
+
+    if "busca_geral" in st.session_state:
+
+        del st.session_state[
+            "busca_geral"
+        ]
+
+    st.rerun()
 
 
 # ============================================================
@@ -1464,69 +1470,51 @@ filtro_atividade = st.sidebar.multiselect(
 df_filtrado = df.copy()
 
 
-def aplicar_multiselect(
-    df_original,
-    coluna,
-    valores
-):
+for coluna, filtro in filtros_colunas.items():
 
-    if not valores:
-        return df_original
+    if coluna not in df_filtrado.columns:
+        continue
 
-    if coluna not in df_original.columns:
-        return df_original
+    # --------------------------------------------------------
+    # MULTISELECT
+    # --------------------------------------------------------
 
-    serie = (
-        df_original[coluna]
-        .fillna("")
-        .astype(str)
-        .str.strip()
-    )
+    if isinstance(filtro, list):
 
-    return df_original[
-        serie.isin(valores)
-    ]
+        if filtro:
 
+            df_filtrado = df_filtrado[
+                df_filtrado[coluna]
+                .fillna("")
+                .astype(str)
+                .str.strip()
+                .isin(filtro)
+            ]
 
-df_filtrado = aplicar_multiselect(
-    df_filtrado,
-    "Posto/ Grad",
-    filtro_posto
-)
+    # --------------------------------------------------------
+    # TEXTO
+    # --------------------------------------------------------
 
-df_filtrado = aplicar_multiselect(
-    df_filtrado,
-    "OME",
-    filtro_ome
-)
+    elif isinstance(filtro, str):
 
-df_filtrado = aplicar_multiselect(
-    df_filtrado,
-    "Município",
-    filtro_municipio
-)
+        termo_coluna = filtro.strip()
 
-df_filtrado = aplicar_multiselect(
-    df_filtrado,
-    "Região",
-    filtro_regiao
-)
+        if termo_coluna:
 
-df_filtrado = aplicar_multiselect(
-    df_filtrado,
-    "SEXO",
-    filtro_sexo
-)
-
-df_filtrado = aplicar_multiselect(
-    df_filtrado,
-    "Atividade",
-    filtro_atividade
-)
+            df_filtrado = df_filtrado[
+                df_filtrado[coluna]
+                .fillna("")
+                .astype(str)
+                .str.contains(
+                    termo_coluna,
+                    case=False,
+                    regex=False
+                )
+            ]
 
 
 # ============================================================
-# BUSCA DIGITADA
+# BUSCA GERAL
 # ============================================================
 
 if busca.strip():
@@ -1540,55 +1528,22 @@ if busca.strip():
 
     for coluna in df_filtrado.columns:
 
-        valores = (
+        mascara = (
+            mascara
+            |
             df_filtrado[coluna]
             .fillna("")
             .astype(str)
             .str.lower()
-        )
-
-        mascara = (
-            mascara
-            |
-            valores.str.contains(
+            .str.contains(
                 termo,
-                regex=False,
-                na=False
+                regex=False
             )
         )
 
     df_filtrado = df_filtrado[
         mascara
     ]
-
-
-# ============================================================
-# BOTÃO LIMPAR FILTROS
-# ============================================================
-
-if st.sidebar.button(
-    "🧹 Limpar filtros",
-    use_container_width=True
-):
-
-    chaves_filtros = [
-        "filtro_posto",
-        "filtro_ome",
-        "filtro_municipio",
-        "filtro_regiao",
-        "filtro_sexo",
-        "filtro_atividade",
-    ]
-
-    for chave in chaves_filtros:
-
-        if chave in st.session_state:
-
-            del st.session_state[
-                chave
-            ]
-
-    st.rerun()
 
 
 # ============================================================
@@ -1601,14 +1556,12 @@ st.subheader(
 
 m1, m2, m3, m4 = st.columns(4)
 
-
 with m1:
 
     st.metric(
         "👥 Total de registros",
         len(df)
     )
-
 
 with m2:
 
@@ -1617,13 +1570,13 @@ with m2:
         len(df_filtrado)
     )
 
-
 with m3:
 
     if "OME" in df.columns:
 
-        quantidade_ome = (
-            df["OME"]
+        st.metric(
+            "🏢 OME",
+            df_filtrado["OME"]
             .replace("", pd.NA)
             .dropna()
             .nunique()
@@ -1631,20 +1584,18 @@ with m3:
 
     else:
 
-        quantidade_ome = 0
-
-    st.metric(
-        "🏢 OME",
-        quantidade_ome
-    )
-
+        st.metric(
+            "🏢 OME",
+            0
+        )
 
 with m4:
 
     if "Posto/ Grad" in df.columns:
 
-        quantidade_postos = (
-            df["Posto/ Grad"]
+        st.metric(
+            "🎖️ Postos/Grad.",
+            df_filtrado["Posto/ Grad"]
             .replace("", pd.NA)
             .dropna()
             .nunique()
@@ -1652,153 +1603,101 @@ with m4:
 
     else:
 
-        quantidade_postos = 0
-
-    st.metric(
-        "🎖️ Postos/Grad.",
-        quantidade_postos
-    )
+        st.metric(
+            "🎖️ Postos/Grad.",
+            0
+        )
 
 
 # ============================================================
-# GRÁFICO DINÂMICO
+# GRÁFICOS
 # ============================================================
-
-st.markdown("---")
 
 st.subheader(
-    "📈 Gráfico"
+    "📈 Gráficos"
 )
 
-
-# ------------------------------------------------------------
-# DEFINIÇÃO DOS FILTROS QUE CONTROLAM O GRÁFICO
-# ------------------------------------------------------------
-
-filtros_graficos = [
-
-    (
-        "Posto/ Grad",
-        filtro_posto,
-        "🎖️ Militares por Posto/Grad."
-    ),
-
-    (
-        "OME",
-        filtro_ome,
-        "🏢 Militares por OME"
-    ),
-
-    (
-        "Município",
-        filtro_municipio,
-        "🏙️ Militares por Município"
-    ),
-
-    (
-        "Região",
-        filtro_regiao,
-        "🗺️ Militares por Região"
-    ),
-
-    (
-        "SEXO",
-        filtro_sexo,
-        "👤 Militares por Sexo"
-    ),
-
-    (
-        "Atividade",
-        filtro_atividade,
-        "💼 Militares por Atividade"
-    ),
-]
+graf1, graf2 = st.columns(2)
 
 
-# ------------------------------------------------------------
-# IDENTIFICA O FILTRO ATIVO
-# ------------------------------------------------------------
+# ============================================================
+# GRÁFICO 1 - POSTO/GRAD
+# ============================================================
 
-coluna_grafico = None
-titulo_grafico = None
-filtro_ativo = None
+with graf1:
 
+    if (
+        "Posto/ Grad" in df_filtrado.columns
+        and not df_filtrado.empty
+    ):
 
-for coluna, valores, titulo in filtros_graficos:
-
-    if valores:
-
-        coluna_grafico = coluna
-
-        titulo_grafico = titulo
-
-        filtro_ativo = valores
-
-        break
-
-
-# ------------------------------------------------------------
-# SE NÃO HOUVER FILTRO
-# ------------------------------------------------------------
-
-if coluna_grafico is None:
-
-    coluna_grafico = "Posto/ Grad"
-
-    titulo_grafico = (
-        "🎖️ Militares por Posto/Grad."
-    )
-
-
-# ------------------------------------------------------------
-# GERA SOMENTE UM GRÁFICO
-# ------------------------------------------------------------
-
-if (
-    coluna_grafico in df_filtrado.columns
-    and not df_filtrado.empty
-):
-
-    dados_grafico = (
-        df_filtrado[
-            coluna_grafico
-        ]
-        .fillna("")
-        .astype(str)
-        .str.strip()
-        .replace(
-            "",
-            "Não informado"
-        )
-        .value_counts()
-        .head(20)
-        .sort_values(
-            ascending=True
-        )
-    )
-
-    st.markdown(
-        f"### {titulo_grafico}"
-    )
-
-    st.bar_chart(
-        dados_grafico,
-        use_container_width=True
-    )
-
-    if filtro_ativo:
-
-        st.caption(
-            f"Filtro utilizado no gráfico: "
-            f"**{coluna_grafico}**"
+        contagem_posto = (
+            df_filtrado[
+                "Posto/ Grad"
+            ]
+            .replace(
+                "",
+                "Não informado"
+            )
+            .value_counts()
+            .head(20)
         )
 
-else:
+        st.markdown(
+            "### 🎖️ Militares por Posto/Grad."
+        )
 
-    st.info(
-        "Não existem dados suficientes "
-        "para gerar o gráfico."
-    )
+        st.bar_chart(
+            contagem_posto,
+            use_container_width=True
+        )
+
+    else:
+
+        st.info(
+            "Não há dados suficientes "
+            "para o gráfico de Posto/Grad."
+        )
+
+
+# ============================================================
+# GRÁFICO 2 - OME
+# ============================================================
+
+with graf2:
+
+    if (
+        "OME" in df_filtrado.columns
+        and not df_filtrado.empty
+    ):
+
+        contagem_ome = (
+            df_filtrado[
+                "OME"
+            ]
+            .replace(
+                "",
+                "Não informado"
+            )
+            .value_counts()
+            .head(20)
+        )
+
+        st.markdown(
+            "### 🏢 Militares por OME"
+        )
+
+        st.bar_chart(
+            contagem_ome,
+            use_container_width=True
+        )
+
+    else:
+
+        st.info(
+            "Não há dados suficientes "
+            "para o gráfico de OME."
+        )
 
 
 # ============================================================
