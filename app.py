@@ -1,8 +1,9 @@
 import gspread
+import gspread
 from google.oauth2.service_account import Credentials
 import pandas as pd
 import streamlit as st
-
+import time
 
 # ============================================================
 # CONFIGURAÇÃO
@@ -13,108 +14,42 @@ st.set_page_config(
     layout="wide"
 )
 
-
-# ============================================================
-# GOOGLE SHEETS
-# ============================================================
-
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
 
 
-def get_gspread_client():
-    """
-    Conecta ao Google Sheets utilizando a conta de serviço
-    configurada no secrets.toml.
-    """
-
-    credentials = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=SCOPES
-    )
-
-    return gspread.authorize(credentials)
-
-
-def get_sheet():
-    """
-    Abre a planilha e retorna a primeira aba.
-    """
-
-    sheet_id = st.secrets["SHEET_ID"]
-
-    client = get_gspread_client()
-
-    spreadsheet = client.open_by_key(sheet_id)
-
-    worksheet = spreadsheet.sheet1
-
-    return worksheet
-
-
 # ============================================================
-# LOGIN
+# AUTENTICAÇÃO DO USUÁRIO
 # ============================================================
 
 def check_password():
 
     def password_entered():
 
-        user = st.session_state.get(
-            "username",
-            ""
-        ).strip()
+        user = st.session_state.get("username", "").strip()
+        pwd = st.session_state.get("password", "").strip()
 
-        pwd = st.session_state.get(
-            "password",
-            ""
-        ).strip()
+        passwords_dict = st.secrets.get("passwords", {})
 
-        passwords_dict = st.secrets.get(
-            "passwords",
-            {}
-        )
+        if user in passwords_dict and str(passwords_dict[user]) == pwd:
 
-        if (
-            user in passwords_dict
-            and str(passwords_dict[user]) == pwd
-        ):
+            st.session_state["password_correct"] = True
 
-            st.session_state[
-                "password_correct"
-            ] = True
-
-            st.session_state.pop(
-                "password",
-                None
-            )
-
-            st.session_state.pop(
-                "username",
-                None
-            )
+            st.session_state.pop("username", None)
+            st.session_state.pop("password", None)
 
         else:
 
-            st.session_state[
-                "password_correct"
-            ] = False
+            st.session_state["password_correct"] = False
 
-    if st.session_state.get(
-        "password_correct",
-        False
-    ):
+    if st.session_state.get("password_correct", False):
         return True
 
-    st.title(
-        "🔒 Acesso Restrito ao Dashboard"
-    )
+    st.title("🔒 Acesso Restrito ao Dashboard")
 
-    col1, col2, col3 = st.columns(
-        [1, 2, 1]
-    )
+    col1, col2, col3 = st.columns([1, 2, 1])
 
     with col2:
 
@@ -131,21 +66,14 @@ def check_password():
 
         st.button(
             "Entrar",
-            on_click=password_entered,
-            use_container_width=True
+            on_click=password_entered
         )
 
         if (
-            "password_correct"
-            in st.session_state
-            and not st.session_state[
-                "password_correct"
-            ]
+            "password_correct" in st.session_state
+            and not st.session_state["password_correct"]
         ):
-
-            st.error(
-                "😕 Usuário ou senha incorretos."
-            )
+            st.error("😕 Usuário ou senha incorretos.")
 
     return False
 
@@ -155,114 +83,109 @@ if not check_password():
 
 
 # ============================================================
-# SIDEBAR
+# CONEXÃO COM GOOGLE SHEETS
 # ============================================================
 
-st.sidebar.success(
-    "Autenticado com sucesso!"
-)
+@st.cache_resource
+def get_gspread_client():
 
+    credentials = Credentials.from_service_account_info(
+        dict(st.secrets["gcp_service_account"]),
+        scopes=SCOPES
+    )
 
-if st.sidebar.button(
-    "🚪 Sair / Logout",
-    use_container_width=True
-):
-
-    st.session_state[
-        "password_correct"
-    ] = False
-
-    st.rerun()
-
-
-if st.sidebar.button(
-    "🔄 Atualizar Dashboard",
-    use_container_width=True
-):
-
-    st.cache_data.clear()
-
-    st.rerun()
+    return gspread.authorize(credentials)
 
 
 # ============================================================
-# CABEÇALHO
+# ABRIR PLANILHA
 # ============================================================
 
-_, col1, col2, _ = st.columns(
-    [2, 1, 1, 2]
-)
+def get_sheet():
 
-with col1:
+    SHEET_ID = st.secrets["SHEET_ID"]
 
-    try:
-        st.image(
-            "images.png",
-            width=140
-        )
-    except:
-        pass
+    client = get_gspread_client()
 
+    spreadsheet = client.open_by_key(SHEET_ID)
 
-with col2:
+    # PRIMEIRA ABA DA PLANILHA
+    sheet = spreadsheet.sheet1
 
-    try:
-        st.image(
-            "11679.png",
-            width=140
-        )
-    except:
-        pass
-
-
-st.markdown(
-    """
-    <h1 style="text-align:center;">
-        DGP - Dados dos Militares
-    </h1>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown("---")
+    return spreadsheet, sheet
 
 
 # ============================================================
-# CARREGAR DADOS
+# LER DADOS DIRETAMENTE DO GOOGLE SHEETS
 # ============================================================
 
 @st.cache_data(ttl=5)
-def load_data(sheet_id):
+def load_data():
 
-    url = (
-        "https://docs.google.com/spreadsheets/d/"
-        f"{sheet_id}/export?format=csv"
+    SHEET_ID = st.secrets["SHEET_ID"]
+
+    client = get_gspread_client()
+
+    spreadsheet = client.open_by_key(SHEET_ID)
+
+    sheet = spreadsheet.sheet1
+
+    values = sheet.get_all_values()
+
+    if not values:
+
+        return pd.DataFrame()
+
+    headers = values[0]
+
+    rows = values[1:]
+
+    # Garante que todas as linhas tenham o mesmo número
+    # de colunas que o cabeçalho
+    dados_corrigidos = []
+
+    for row in rows:
+
+        row = list(row)
+
+        if len(row) < len(headers):
+
+            row += [""] * (len(headers) - len(row))
+
+        elif len(row) > len(headers):
+
+            row = row[:len(headers)]
+
+        dados_corrigidos.append(row)
+
+    df = pd.DataFrame(
+        dados_corrigidos,
+        columns=headers
     )
-
-    df = pd.read_csv(
-        url,
-        header=0,
-        dtype=str
-    )
-
-    df.columns = [
-        str(col)
-        .strip()
-        .replace(":", "-")
-        for col in df.columns
-    ]
-
-    df = df.fillna("")
 
     return df
 
 
 # ============================================================
-# CAMPOS
+# NORMALIZAR TEXTO
 # ============================================================
 
-COLUNAS_PADRAO = [
+def limpar_valor(valor):
 
+    if valor is None:
+        return ""
+
+    if pd.isna(valor):
+        return ""
+
+    return str(valor).strip()
+
+
+# ============================================================
+# MAPA DOS CAMPOS
+# ============================================================
+
+CAMPOS = [
     "nº Funcional",
     "Matrícula",
     "CPF.",
@@ -276,46 +199,36 @@ COLUNAS_PADRAO = [
     "Fones",
     "Ano de ingresso",
     "Data de praça",
-
     "OME",
     "OME QOD",
     "Atividade",
     "Município",
     "Região",
-
     "Tempo de serviço (anos)",
     "Tempo de serviço (ano, mês, dias)",
     "Tempo de serviço (dias)",
     "Tempo na OBM atual",
-
     "Data da última promoção ou Implant. PCNH",
     "Princípio da última promoção",
     "Tempo no Posto/Grad. atual EM DIAS",
-
     "Data da Movimentação em SP",
     "OME ANTERIOR AO ÚLTIMO SP PUBLICADO",
     "Data de chegada na OBM Anteior",
     "Movimentado (apagar antes de atualizar o SP)",
-
     "ÓRGÃO",
     "Poder",
     "Ônus para Origem",
     "Início da Cessão ou requisição",
-
     "Renovação de cessão - Atos/Portarias/Documentos",
     "DOE/BGSDS de renovação",
     "SEI deslig.",
-
     "Processo RR e AFASTAMENTOS SUP. A 90 DIAS ININTERRUPTOS, PUBLICADOS EM SP",
-
     "INÍCIO DA LTIP",
     "TÉRMINO DA LTIP (inserir data de apresentação)",
-
     "Somatório LTIP gozada em anos",
     "Somatório LTIP gozada em anos/meses/dias",
     "Somatório de todas LTIP gozadas em dias",
     "TOTAL DIAS EM LTIP no MESMO Posto/Grad.",
-
     "Ato",
     "Doc. Publicação",
     "SP da Adição",
@@ -325,6 +238,20 @@ COLUNAS_PADRAO = [
     "Hoje",
     "OBS",
 ]
+
+
+# ============================================================
+# FUNÇÃO PARA OBTER VALOR
+# ============================================================
+
+def obter_valor(dados, campo):
+
+    if dados is None:
+        return ""
+
+    valor = dados.get(campo, "")
+
+    return limpar_valor(valor)
 
 
 # ============================================================
@@ -339,31 +266,14 @@ def formulario_militar(
     if dados is None:
         dados = {}
 
-    def valor(nome):
-
-        v = dados.get(
-            nome,
-            ""
-        )
-
-        if v is None:
-            return ""
-
-        try:
-
-            if pd.isna(v):
-                return ""
-
-        except:
-            pass
-
-        return str(v)
+    def v(campo):
+        return obter_valor(dados, campo)
 
     # ========================================================
     # ABAS
     # ========================================================
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    tab_pessoal, tab_lotacao, tab_cessao, tab_ltip, tab_outros = st.tabs(
         [
             "👤 Identificação & Pessoal",
             "🏢 Lotação & Promoção",
@@ -377,7 +287,7 @@ def formulario_militar(
     # ABA 1
     # ========================================================
 
-    with tab1:
+    with tab_pessoal:
 
         c1, c2, c3 = st.columns(3)
 
@@ -385,41 +295,31 @@ def formulario_militar(
 
             num_funcional = st.text_input(
                 "nº Funcional:",
-                value=valor(
-                    "nº Funcional"
-                ),
+                value=v("nº Funcional"),
                 key=f"{prefixo}_num_funcional"
             )
 
             matricula = st.text_input(
                 "Matrícula:",
-                value=valor(
-                    "Matrícula"
-                ),
+                value=v("Matrícula"),
                 key=f"{prefixo}_matricula"
             )
 
             cpf_ponto = st.text_input(
                 "CPF.:",
-                value=valor(
-                    "CPF."
-                ),
+                value=v("CPF."),
                 key=f"{prefixo}_cpf_ponto"
             )
 
             cpf = st.text_input(
                 "CPF:",
-                value=valor(
-                    "CPF"
-                ),
+                value=v("CPF"),
                 key=f"{prefixo}_cpf"
             )
 
             num_ident = st.text_input(
                 "Nº IDENT.:",
-                value=valor(
-                    "Nº IDENT."
-                ),
+                value=v("Nº IDENT."),
                 key=f"{prefixo}_num_ident"
             )
 
@@ -427,47 +327,38 @@ def formulario_militar(
 
             nome = st.text_input(
                 "Nome:",
-                value=valor(
-                    "Nome"
-                ),
+                value=v("Nome"),
                 key=f"{prefixo}_nome"
             )
 
             nome_guerra = st.text_input(
                 "Nome de Guerra:",
-                value=valor(
-                    "Nome de Guerra"
-                ),
+                value=v("Nome de Guerra"),
                 key=f"{prefixo}_nome_guerra"
             )
 
+            sexo_valor = v("SEXO").upper()
+
+            opcoes_sexo = [
+                "",
+                "MASCULINO",
+                "FEMININO"
+            ]
+
             sexo = st.selectbox(
                 "SEXO:",
-                [
-                    "",
-                    "MASCULINO",
-                    "FEMININO"
-                ],
+                opcoes_sexo,
                 index=(
-                    [
-                        "",
-                        "MASCULINO",
-                        "FEMININO"
-                    ].index(
-                        valor("SEXO").upper()
-                    )
-                    if valor("SEXO").upper()
-                    in [
-                        "",
-                        "MASCULINO",
-                        "FEMININO"
-                    ]
+                    opcoes_sexo.index(sexo_valor)
+                    if sexo_valor in opcoes_sexo
                     else 0
                 ),
                 key=f"{prefixo}_sexo"
             )
 
-            racas = [
+            raca_valor = v("Raça/Cor").upper()
+
+            opcoes_raca = [
                 "",
                 "BRANCA",
                 "PRETA",
@@ -476,16 +367,12 @@ def formulario_militar(
                 "INDÍGENA"
             ]
 
-            raca_atual = valor(
-                "Raça/Cor"
-            ).upper()
-
-            raca = st.selectbox(
+            raca_cor = st.selectbox(
                 "Raça/Cor:",
-                racas,
+                opcoes_raca,
                 index=(
-                    racas.index(raca_atual)
-                    if raca_atual in racas
+                    opcoes_raca.index(raca_valor)
+                    if raca_valor in opcoes_raca
                     else 0
                 ),
                 key=f"{prefixo}_raca"
@@ -495,33 +382,25 @@ def formulario_militar(
 
             posto_grad = st.text_input(
                 "Posto/ Grad:",
-                value=valor(
-                    "Posto/ Grad"
-                ),
+                value=v("Posto/ Grad"),
                 key=f"{prefixo}_posto"
             )
 
             fones = st.text_input(
                 "Fones:",
-                value=valor(
-                    "Fones"
-                ),
+                value=v("Fones"),
                 key=f"{prefixo}_fones"
             )
 
             ano_ingresso = st.text_input(
                 "Ano de ingresso:",
-                value=valor(
-                    "Ano de ingresso"
-                ),
+                value=v("Ano de ingresso"),
                 key=f"{prefixo}_ano"
             )
 
             data_praca = st.text_input(
                 "Data de praça:",
-                value=valor(
-                    "Data de praça"
-                ),
+                value=v("Data de praça"),
                 key=f"{prefixo}_praca"
             )
 
@@ -529,7 +408,7 @@ def formulario_militar(
     # ABA 2
     # ========================================================
 
-    with tab2:
+    with tab_lotacao:
 
         c1, c2, c3 = st.columns(3)
 
@@ -537,89 +416,81 @@ def formulario_militar(
 
             ome = st.text_input(
                 "OME:",
-                value=valor("OME"),
+                value=v("OME"),
                 key=f"{prefixo}_ome"
             )
 
             ome_qod = st.text_input(
                 "OME QOD:",
-                value=valor("OME QOD"),
+                value=v("OME QOD"),
                 key=f"{prefixo}_ome_qod"
             )
 
             atividade = st.text_input(
                 "Atividade:",
-                value=valor("Atividade"),
+                value=v("Atividade"),
                 key=f"{prefixo}_atividade"
             )
 
             municipio = st.text_input(
                 "Município:",
-                value=valor("Município"),
+                value=v("Município"),
                 key=f"{prefixo}_municipio"
             )
 
             regiao = st.text_input(
                 "Região:",
-                value=valor("Região"),
+                value=v("Região"),
                 key=f"{prefixo}_regiao"
             )
 
         with c2:
 
-            tempo_anos = st.text_input(
+            tempo_servico_anos = st.text_input(
                 "Tempo de serviço (anos):",
-                value=valor(
-                    "Tempo de serviço (anos)"
-                ),
+                value=v("Tempo de serviço (anos)"),
                 key=f"{prefixo}_tempo_anos"
             )
 
-            tempo_amd = st.text_input(
+            tempo_servico_amd = st.text_input(
                 "Tempo de serviço (ano, mês, dias):",
-                value=valor(
-                    "Tempo de serviço (ano, mês, dias)"
-                ),
+                value=v("Tempo de serviço (ano, mês, dias)"),
                 key=f"{prefixo}_tempo_amd"
             )
 
-            tempo_dias = st.text_input(
+            tempo_servico_dias = st.text_input(
                 "Tempo de serviço (dias):",
-                value=valor(
-                    "Tempo de serviço (dias)"
-                ),
+                value=v("Tempo de serviço (dias)"),
                 key=f"{prefixo}_tempo_dias"
             )
 
-            tempo_obm = st.text_input(
+            tempo_obm_atual = st.text_input(
                 "Tempo na OBM atual:",
-                value=valor(
-                    "Tempo na OBM atual"
-                ),
+                value=v("Tempo na OBM atual"),
                 key=f"{prefixo}_tempo_obm"
             )
 
         with c3:
 
-            data_promocao = st.text_input(
+            data_ult_promocao = st.text_input(
                 "Data da última promoção ou Implant. PCNH:",
-                value=valor(
+                value=v(
                     "Data da última promoção ou Implant. PCNH"
                 ),
                 key=f"{prefixo}_data_promocao"
             )
 
-            principio = st.text_input(
+            principio_ult_promocao = st.text_input(
                 "Princípio da última promoção:",
-                value=valor(
+                value=v(
                     "Princípio da última promoção"
                 ),
                 key=f"{prefixo}_principio"
             )
 
-            tempo_posto = st.text_input(
+            tempo_posto_atual_dias = st.text_input(
                 "Tempo no Posto/Grad. atual EM DIAS:",
-                value=valor(
+                value=v(
                     "Tempo no Posto/Grad. atual EM DIAS"
                 ),
                 key=f"{prefixo}_tempo_posto"
@@ -629,23 +500,21 @@ def formulario_militar(
     # ABA 3
     # ========================================================
 
-    with tab3:
+    with tab_cessao:
 
         c1, c2, c3 = st.columns(3)
 
         with c1:
 
-            data_mov = st.text_input(
+            data_mov_sp = st.text_input(
                 "Data da Movimentação em SP:",
-                value=valor(
-                    "Data da Movimentação em SP"
-                ),
-                key=f"{prefixo}_data_mov"
+                value=v("Data da Movimentação em SP"),
+                key=f"{prefixo}_mov_sp"
             )
 
             ome_anterior = st.text_input(
                 "OME ANTERIOR AO ÚLTIMO SP PUBLICADO:",
-                value=valor(
+                value=v(
                     "OME ANTERIOR AO ÚLTIMO SP PUBLICADO"
                 ),
                 key=f"{prefixo}_ome_anterior"
@@ -653,15 +522,15 @@ def formulario_militar(
 
             data_chegada = st.text_input(
                 "Data de chegada na OBM Anteior:",
-                value=valor(
+                value=v(
                     "Data de chegada na OBM Anteior"
                 ),
-                key=f"{prefixo}_data_chegada"
+                key=f"{prefixo}_chegada"
             )
 
             movimentado = st.text_input(
                 "Movimentado:",
-                value=valor(
+                value=v(
                     "Movimentado (apagar antes de atualizar o SP)"
                 ),
                 key=f"{prefixo}_movimentado"
@@ -671,34 +540,30 @@ def formulario_militar(
 
             orgao = st.text_input(
                 "ÓRGÃO:",
-                value=valor("ÓRGÃO"),
+                value=v("ÓRGÃO"),
                 key=f"{prefixo}_orgao"
             )
 
             poder = st.text_input(
                 "Poder:",
-                value=valor("Poder"),
+                value=v("Poder"),
                 key=f"{prefixo}_poder"
             )
 
-            onus_opcoes = [
+            onus_valor = v("Ônus para Origem").upper()
+
+            opcoes_onus = [
                 "",
                 "SIM",
                 "NÃO"
             ]
 
-            onus_atual = valor(
-                "Ônus para Origem"
-            ).upper()
-
-            onus = st.selectbox(
+            onus_origem = st.selectbox(
                 "Ônus para Origem:",
-                onus_opcoes,
+                opcoes_onus,
                 index=(
-                    onus_opcoes.index(
-                        onus_atual
-                    )
-                    if onus_atual in onus_opcoes
+                    opcoes_onus.index(onus_valor)
+                    if onus_valor in opcoes_onus
                     else 0
                 ),
                 key=f"{prefixo}_onus"
@@ -706,7 +571,7 @@ def formulario_militar(
 
             inicio_cessao = st.text_input(
                 "Início da Cessão ou requisição:",
-                value=valor(
+                value=v(
                     "Início da Cessão ou requisição"
                 ),
                 key=f"{prefixo}_inicio_cessao"
@@ -716,7 +581,7 @@ def formulario_militar(
 
             renovacao = st.text_input(
                 "Renovação de cessão - Atos/Portarias/Documentos:",
-                value=valor(
+                value=v(
                     "Renovação de cessão - Atos/Portarias/Documentos"
                 ),
                 key=f"{prefixo}_renovacao"
@@ -724,7 +589,7 @@ def formulario_militar(
 
             doe = st.text_input(
                 "DOE/BGSDS de renovação:",
-                value=valor(
+                value=v(
                     "DOE/BGSDS de renovação"
                 ),
                 key=f"{prefixo}_doe"
@@ -732,9 +597,7 @@ def formulario_militar(
 
             sei = st.text_input(
                 "SEI deslig.:",
-                value=valor(
-                    "SEI deslig."
-                ),
+                value=v("SEI deslig."),
                 key=f"{prefixo}_sei"
             )
 
@@ -742,7 +605,7 @@ def formulario_militar(
     # ABA 4
     # ========================================================
 
-    with tab4:
+    with tab_ltip:
 
         c1, c2 = st.columns(2)
 
@@ -750,7 +613,7 @@ def formulario_militar(
 
             afastamentos = st.text_area(
                 "Processo RR e AFASTAMENTOS SUP. A 90 DIAS ININTERRUPTOS, PUBLICADOS EM SP:",
-                value=valor(
+                value=v(
                     "Processo RR e AFASTAMENTOS SUP. A 90 DIAS ININTERRUPTOS, PUBLICADOS EM SP"
                 ),
                 key=f"{prefixo}_afastamentos"
@@ -758,15 +621,13 @@ def formulario_militar(
 
             inicio_ltip = st.text_input(
                 "INÍCIO DA LTIP:",
-                value=valor(
-                    "INÍCIO DA LTIP"
-                ),
+                value=v("INÍCIO DA LTIP"),
                 key=f"{prefixo}_inicio_ltip"
             )
 
             termino_ltip = st.text_input(
                 "TÉRMINO DA LTIP:",
-                value=valor(
+                value=v(
                     "TÉRMINO DA LTIP (inserir data de apresentação)"
                 ),
                 key=f"{prefixo}_termino_ltip"
@@ -776,7 +637,7 @@ def formulario_militar(
 
             somatorio_anos = st.text_input(
                 "Somatório LTIP gozada em anos:",
-                value=valor(
+                value=v(
                     "Somatório LTIP gozada em anos"
                 ),
                 key=f"{prefixo}_somatorio_anos"
@@ -784,7 +645,7 @@ def formulario_militar(
 
             somatorio_amd = st.text_input(
                 "Somatório LTIP gozada em anos/meses/dias:",
-                value=valor(
+                value=v(
                     "Somatório LTIP gozada em anos/meses/dias"
                 ),
                 key=f"{prefixo}_somatorio_amd"
@@ -792,7 +653,7 @@ def formulario_militar(
 
             somatorio_dias = st.text_input(
                 "Somatório de todas LTIP gozadas em dias:",
-                value=valor(
+                value=v(
                     "Somatório de todas LTIP gozadas em dias"
                 ),
                 key=f"{prefixo}_somatorio_dias"
@@ -800,7 +661,7 @@ def formulario_militar(
 
             total_ltip = st.text_input(
                 "TOTAL DIAS EM LTIP no MESMO Posto/Grad.:",
-                value=valor(
+                value=v(
                     "TOTAL DIAS EM LTIP no MESMO Posto/Grad."
                 ),
                 key=f"{prefixo}_total_ltip"
@@ -810,7 +671,7 @@ def formulario_militar(
     # ABA 5
     # ========================================================
 
-    with tab5:
+    with tab_outros:
 
         c1, c2 = st.columns(2)
 
@@ -818,39 +679,33 @@ def formulario_militar(
 
             ato = st.text_input(
                 "Ato:",
-                value=valor("Ato"),
+                value=v("Ato"),
                 key=f"{prefixo}_ato"
             )
 
             doc_publicacao = st.text_input(
                 "Doc. Publicação:",
-                value=valor(
-                    "Doc. Publicação"
-                ),
+                value=v("Doc. Publicação"),
                 key=f"{prefixo}_doc"
             )
 
             sp_adicao = st.text_input(
                 "SP da Adição:",
-                value=valor(
-                    "SP da Adição"
-                ),
+                value=v("SP da Adição"),
                 key=f"{prefixo}_sp"
             )
 
             processo_rr = st.text_input(
                 "Processo RR:",
-                value=valor(
-                    "Processo RR"
-                ),
-                key=f"{prefixo}_processo"
+                value=v("Processo RR"),
+                key=f"{prefixo}_processo_rr"
             )
 
         with c2:
 
             suplemento = st.text_input(
                 "Suplemento de Pessoal nº/Ano:",
-                value=valor(
+                value=v(
                     "Suplemento de Pessoal nº/Ano"
                 ),
                 key=f"{prefixo}_suplemento"
@@ -858,7 +713,7 @@ def formulario_militar(
 
             data_suplemento = st.text_input(
                 "Data Suplemento de Pessoal:",
-                value=valor(
+                value=v(
                     "Data Suplemento de Pessoal"
                 ),
                 key=f"{prefixo}_data_suplemento"
@@ -866,13 +721,13 @@ def formulario_militar(
 
             hoje = st.text_input(
                 "Hoje:",
-                value=valor("Hoje"),
+                value=v("Hoje"),
                 key=f"{prefixo}_hoje"
             )
 
             obs = st.text_area(
                 "OBS:",
-                value=valor("OBS"),
+                value=v("OBS"),
                 key=f"{prefixo}_obs"
             )
 
@@ -881,7 +736,6 @@ def formulario_militar(
     # ========================================================
 
     return {
-
         "nº Funcional": num_funcional,
         "Matrícula": matricula,
         "CPF.": cpf_ponto,
@@ -890,51 +744,41 @@ def formulario_militar(
         "Nome": nome,
         "Nome de Guerra": nome_guerra,
         "SEXO": sexo,
-        "Raça/Cor": raca,
+        "Raça/Cor": raca_cor,
         "Posto/ Grad": posto_grad,
         "Fones": fones,
         "Ano de ingresso": ano_ingresso,
         "Data de praça": data_praca,
-
         "OME": ome,
         "OME QOD": ome_qod,
         "Atividade": atividade,
         "Município": municipio,
         "Região": regiao,
-
-        "Tempo de serviço (anos)": tempo_anos,
-        "Tempo de serviço (ano, mês, dias)": tempo_amd,
-        "Tempo de serviço (dias)": tempo_dias,
-        "Tempo na OBM atual": tempo_obm,
-
-        "Data da última promoção ou Implant. PCNH": data_promocao,
-        "Princípio da última promoção": principio,
-        "Tempo no Posto/Grad. atual EM DIAS": tempo_posto,
-
-        "Data da Movimentação em SP": data_mov,
+        "Tempo de serviço (anos)": tempo_servico_anos,
+        "Tempo de serviço (ano, mês, dias)": tempo_servico_amd,
+        "Tempo de serviço (dias)": tempo_servico_dias,
+        "Tempo na OBM atual": tempo_obm_atual,
+        "Data da última promoção ou Implant. PCNH": data_ult_promocao,
+        "Princípio da última promoção": principio_ult_promocao,
+        "Tempo no Posto/Grad. atual EM DIAS": tempo_posto_atual_dias,
+        "Data da Movimentação em SP": data_mov_sp,
         "OME ANTERIOR AO ÚLTIMO SP PUBLICADO": ome_anterior,
         "Data de chegada na OBM Anteior": data_chegada,
         "Movimentado (apagar antes de atualizar o SP)": movimentado,
-
         "ÓRGÃO": orgao,
         "Poder": poder,
-        "Ônus para Origem": onus,
+        "Ônus para Origem": onus_origem,
         "Início da Cessão ou requisição": inicio_cessao,
-
         "Renovação de cessão - Atos/Portarias/Documentos": renovacao,
         "DOE/BGSDS de renovação": doe,
         "SEI deslig.": sei,
-
         "Processo RR e AFASTAMENTOS SUP. A 90 DIAS ININTERRUPTOS, PUBLICADOS EM SP": afastamentos,
-
         "INÍCIO DA LTIP": inicio_ltip,
         "TÉRMINO DA LTIP (inserir data de apresentação)": termino_ltip,
-
         "Somatório LTIP gozada em anos": somatorio_anos,
         "Somatório LTIP gozada em anos/meses/dias": somatorio_amd,
         "Somatório de todas LTIP gozadas em dias": somatorio_dias,
         "TOTAL DIAS EM LTIP no MESMO Posto/Grad.": total_ltip,
-
         "Ato": ato,
         "Doc. Publicação": doc_publicacao,
         "SP da Adição": sp_adicao,
@@ -947,24 +791,126 @@ def formulario_militar(
 
 
 # ============================================================
-# EXECUÇÃO
+# MONTAR LINHA DE ACORDO COM OS CABEÇALHOS DA PLANILHA
+# ============================================================
+
+def montar_linha(headers, dados):
+
+    linha = []
+
+    for header in headers:
+
+        if header in dados:
+
+            valor = dados[header]
+
+        else:
+
+            valor = ""
+
+        valor = limpar_valor(valor)
+
+        linha.append(valor)
+
+    return linha
+
+
+# ============================================================
+# LOCALIZAR MATRÍCULA
+# ============================================================
+
+def localizar_matricula(sheet, matricula):
+
+    headers = sheet.row_values(1)
+
+    if "Matrícula" not in headers:
+
+        raise Exception(
+            "A coluna 'Matrícula' não existe na primeira linha da planilha."
+        )
+
+    coluna = headers.index("Matrícula") + 1
+
+    valores = sheet.col_values(coluna)
+
+    matricula_procurada = limpar_valor(matricula)
+
+    for numero_linha, valor in enumerate(valores, start=1):
+
+        if numero_linha == 1:
+            continue
+
+        if limpar_valor(valor) == matricula_procurada:
+
+            return numero_linha
+
+    return None
+
+
+# ============================================================
+# CABEÇALHO
+# ============================================================
+
+st.sidebar.success("Autenticado com sucesso!")
+
+if st.sidebar.button("🚪 Sair / Logout"):
+
+    st.session_state["password_correct"] = False
+
+    st.rerun()
+
+
+if st.sidebar.button("🔄 Forçar Atualização"):
+
+    st.cache_data.clear()
+
+    st.rerun()
+
+
+# ============================================================
+# LOGOS
+# ============================================================
+
+_, col_img1, col_img2, _ = st.columns(
+    [2, 1, 1, 2]
+)
+
+with col_img1:
+
+    st.image(
+        "images.png",
+        width=140
+    )
+
+with col_img2:
+
+    st.image(
+        "11679.png",
+        width=140
+    )
+
+
+st.markdown(
+    "<h1 style='text-align:center;'>DGP - Dados dos Militares</h1>",
+    unsafe_allow_html=True
+)
+
+st.markdown("---")
+
+
+# ============================================================
+# PROGRAMA PRINCIPAL
 # ============================================================
 
 try:
 
-    SHEET_ID = st.secrets["SHEET_ID"]
+    # --------------------------------------------------------
+    # CARREGA DADOS
+    # --------------------------------------------------------
 
-    df = load_data(
-        SHEET_ID
-    )
+    df = load_data()
 
-    # ========================================================
-    # VISUALIZAÇÃO
-    # ========================================================
-
-    st.subheader(
-        "📋 Visualização dos Registros"
-    )
+    st.subheader("📋 Visualização dos Registros")
 
     st.dataframe(
         df,
@@ -979,18 +925,18 @@ try:
     # ========================================================
 
     with st.expander(
-        "➕ Novo Cadastro de Militar",
+        "➕ NOVO CADASTRO DE MILITAR",
         expanded=False
     ):
 
         st.info(
             "Preencha os dados e clique em "
-            "**SALVAR NOVO CADASTRO**."
+            "**💾 SALVAR NOVO CADASTRO**."
         )
 
-        # IMPORTANTE:
-        # O formulário engloba todos os campos e o botão.
-        # Assim o Streamlit entrega todos os valores juntos.
+        # ----------------------------------------------------
+        # FORMULÁRIO
+        # ----------------------------------------------------
 
         with st.form(
             "form_novo_cadastro",
@@ -1004,164 +950,102 @@ try:
 
             st.markdown("---")
 
-            salvar = st.form_submit_button(
+            salvar_novo = st.form_submit_button(
                 "💾 SALVAR NOVO CADASTRO",
                 type="primary",
                 use_container_width=True
             )
 
-        # ====================================================
-        # SALVAMENTO
-        # ====================================================
+        # ----------------------------------------------------
+        # SALVAR
+        # ----------------------------------------------------
 
-        if salvar:
-
-            matricula = str(
-                novos_dados.get(
-                    "Matrícula",
-                    ""
-                )
-            ).strip()
-
-            nome = str(
-                novos_dados.get(
-                    "Nome",
-                    ""
-                )
-            ).strip()
-
-            # -----------------------------------------------
-            # VALIDAÇÕES
-            # -----------------------------------------------
-
-            if not matricula:
-
-                st.error(
-                    "❌ A Matrícula é obrigatória."
-                )
-
-                st.stop()
-
-            if not nome:
-
-                st.error(
-                    "❌ O Nome é obrigatório."
-                )
-
-                st.stop()
-
-            st.info(
-                f"⏳ Salvando matrícula **{matricula}**..."
-            )
+        if salvar_novo:
 
             try:
 
-                # -------------------------------------------
-                # CONECTA
-                # -------------------------------------------
+                matricula = limpar_valor(
+                    novos_dados.get("Matrícula")
+                )
 
-                worksheet = get_sheet()
+                nome = limpar_valor(
+                    novos_dados.get("Nome")
+                )
 
-                # -------------------------------------------
-                # CABEÇALHOS REAIS DA PLANILHA
-                # -------------------------------------------
+                if not matricula:
 
-                headers = worksheet.row_values(1)
+                    st.error(
+                        "❌ Informe a Matrícula."
+                    )
+
+                    st.stop()
+
+                if not nome:
+
+                    st.error(
+                        "❌ Informe o Nome."
+                    )
+
+                    st.stop()
+
+                st.info(
+                    "🔄 Conectando ao Google Sheets..."
+                )
+
+                spreadsheet, sheet = get_sheet()
+
+                st.success(
+                    f"✅ Conectado à planilha: "
+                    f"{spreadsheet.title}"
+                )
+
+                headers = sheet.row_values(1)
 
                 if not headers:
 
                     st.error(
-                        "❌ A planilha não possui cabeçalhos "
-                        "na primeira linha."
+                        "❌ A planilha não possui cabeçalho."
                     )
 
                     st.stop()
 
-                # -------------------------------------------
-                # LIMPA CABEÇALHOS
-                # -------------------------------------------
-
-                headers = [
-                    str(h).strip()
-                    for h in headers
-                ]
-
-                # -------------------------------------------
+                # --------------------------------------------
                 # CONFERE MATRÍCULA
-                # -------------------------------------------
+                # --------------------------------------------
 
-                if "Matrícula" not in headers:
+                linha_existente = localizar_matricula(
+                    sheet,
+                    matricula
+                )
+
+                if linha_existente:
 
                     st.error(
-                        "❌ Não encontrei a coluna "
-                        "'Matrícula' na planilha."
-                    )
-
-                    st.write(
-                        "Cabeçalhos encontrados:"
-                    )
-
-                    st.code(
-                        "\n".join(headers)
+                        f"❌ A matrícula **{matricula}** "
+                        f"já existe na linha "
+                        f"**{linha_existente}**."
                     )
 
                     st.stop()
 
-                coluna_matricula = (
-                    headers.index(
-                        "Matrícula"
-                    ) + 1
+                # --------------------------------------------
+                # MONTA LINHA
+                # --------------------------------------------
+
+                nova_linha = montar_linha(
+                    headers,
+                    novos_dados
                 )
 
-                valores = worksheet.col_values(
-                    coluna_matricula
-                )
-
-                matriculas = [
-                    str(x).strip()
-                    for x in valores[1:]
-                    if str(x).strip()
-                ]
-
-                if matricula in matriculas:
-
-                    st.error(
-                        f"❌ A matrícula "
-                        f"**{matricula}** "
-                        f"já existe."
-                    )
-
-                    st.stop()
-
-                # -------------------------------------------
-                # MONTA LINHA EXATAMENTE NA ORDEM DA PLANILHA
-                # -------------------------------------------
-
-                nova_linha = []
-
-                for coluna in headers:
-
-                    valor = novos_dados.get(
-                        coluna,
-                        ""
-                    )
-
-                    if valor is None:
-                        valor = ""
-
-                    nova_linha.append(
-                        str(valor)
-                    )
-
-                # -------------------------------------------
-                # GARANTE TAMANHO
-                # -------------------------------------------
+                # --------------------------------------------
+                # VERIFICA
+                # --------------------------------------------
 
                 if len(nova_linha) != len(headers):
 
                     st.error(
-                        "❌ Erro interno: quantidade "
-                        "de colunas diferente."
+                        "❌ Erro interno: quantidade de "
+                        "colunas diferente."
                     )
 
                     st.write(
@@ -1170,113 +1054,75 @@ try:
                     )
 
                     st.write(
-                        "Dados:",
+                        "Valores:",
                         len(nova_linha)
                     )
 
                     st.stop()
 
-                # -------------------------------------------
-                # MOSTRA O QUE SERÁ GRAVADO
-                # -------------------------------------------
+                # --------------------------------------------
+                # GRAVA
+                # --------------------------------------------
 
-                st.write(
-                    f"📝 Gravando **{len(nova_linha)} "
-                    f"campos** na planilha..."
+                st.info(
+                    "💾 Gravando cadastro no Google Sheets..."
                 )
 
-                # -------------------------------------------
-                # GRAVAÇÃO
-                # -------------------------------------------
-
-                worksheet.append_row(
+                sheet.append_row(
                     nova_linha,
                     value_input_option="USER_ENTERED"
                 )
 
-                # -------------------------------------------
-                # VERIFICAÇÃO REAL
-                # -------------------------------------------
+                # --------------------------------------------
+                # CONFIRMA LENDO NOVAMENTE
+                # --------------------------------------------
 
-                st.write(
-                    "🔎 Confirmando gravação..."
-                )
+                time.sleep(1)
 
-                valores_depois = worksheet.col_values(
-                    coluna_matricula
-                )
-
-                encontrou = (
+                linha_confirmada = localizar_matricula(
+                    sheet,
                     matricula
-                    in [
-                        str(x).strip()
-                        for x in valores_depois
-                    ]
                 )
 
-                if not encontrou:
+                if not linha_confirmada:
 
                     st.error(
-                        "⚠️ O Google não confirmou a "
-                        "gravação da matrícula."
+                        "⚠️ O comando de gravação foi "
+                        "executado, mas a matrícula não "
+                        "foi localizada na planilha após "
+                        "a gravação."
                     )
 
-                    st.warning(
-                        "A aplicação conseguiu executar "
-                        "a operação, mas a matrícula não "
-                        "foi encontrada novamente na "
-                        "planilha."
+                else:
+
+                    st.success(
+                        f"🎉 CADASTRO SALVO COM SUCESSO!\n\n"
+                        f"**Matrícula:** {matricula}\n\n"
+                        f"**Nome:** {nome}\n\n"
+                        f"**Linha:** {linha_confirmada}"
                     )
 
-                    st.stop()
+                    st.cache_data.clear()
 
-                # -------------------------------------------
-                # SUCESSO
-                # -------------------------------------------
+                    time.sleep(1)
 
-                st.success(
-                    f"✅ CADASTRO SALVO COM SUCESSO!\n\n"
-                    f"**Matrícula:** {matricula}\n\n"
-                    f"**Nome:** {nome}"
-                )
-
-                st.balloons()
-
-                # -------------------------------------------
-                # LIMPA CACHE
-                # -------------------------------------------
-
-                st.cache_data.clear()
-
-                # -------------------------------------------
-                # RECARREGA DADOS
-                # -------------------------------------------
-
-                st.rerun()
+                    st.rerun()
 
             except Exception as erro:
 
                 st.error(
-                    "❌ NÃO FOI POSSÍVEL GRAVAR "
-                    "NA PLANILHA."
+                    "❌ ERRO AO SALVAR O CADASTRO"
                 )
 
                 st.exception(erro)
 
-                st.warning(
-                    "Se aparecer 'Permission denied', "
-                    "'403' ou 'The caller does not have "
-                    "permission', a conta de serviço "
-                    "precisa ter acesso de EDITOR à "
-                    "planilha."
-                )
 
     # ========================================================
-    # EDIÇÃO
+    # EDITAR
     # ========================================================
 
     with st.expander(
-        "✏️ Editar Registro Existente",
+        "✏️ EDITAR REGISTRO EXISTENTE",
         expanded=False
     ):
 
@@ -1285,30 +1131,48 @@ try:
             or "Nome" not in df.columns
         ):
 
-            st.warning(
-                "As colunas Matrícula e Nome "
-                "não foram encontradas."
+            st.error(
+                "❌ As colunas Matrícula e Nome "
+                "precisam existir na planilha."
+            )
+
+        elif df.empty:
+
+            st.info(
+                "Nenhum registro encontrado."
             )
 
         else:
 
-            opcoes = df.apply(
-                lambda r:
-                f"{r['Matrícula']} - {r['Nome']}",
-                axis=1
-            ).tolist()
+            opcoes = []
+
+            for _, row in df.iterrows():
+
+                matricula = limpar_valor(
+                    row.get("Matrícula", "")
+                )
+
+                nome = limpar_valor(
+                    row.get("Nome", "")
+                )
+
+                if matricula:
+
+                    opcoes.append(
+                        f"{matricula} - {nome}"
+                    )
 
             selecionado = st.selectbox(
                 "Selecione o militar:",
                 [""] + opcoes,
-                key="editar_selecionado"
+                key="militar_edicao"
             )
 
             if selecionado:
 
                 matricula_editar = (
                     selecionado
-                    .split(" - ")[0]
+                    .split(" - ", 1)[0]
                     .strip()
                 )
 
@@ -1317,16 +1181,20 @@ try:
                     == matricula_editar
                 ]
 
-                if not registro.empty:
+                if registro.empty:
 
-                    dados = registro.iloc[
-                        0
-                    ].to_dict()
+                    st.error(
+                        "❌ Registro não localizado."
+                    )
+
+                else:
+
+                    dados_militar = (
+                        registro.iloc[0].to_dict()
+                    )
 
                     st.info(
-                        f"Editando: **"
-                        f"{dados.get('Nome', '')}"
-                        f"**"
+                        f"Editando: **{dados_militar.get('Nome', '')}**"
                     )
 
                     with st.form(
@@ -1335,83 +1203,88 @@ try:
                     ):
 
                         dados_editados = formulario_militar(
-                            dados=dados,
-                            prefixo="edicao"
+                            dados=dados_militar,
+                            prefixo="editar"
                         )
 
-                        atualizar = (
-                            st.form_submit_button(
-                                "🔄 ATUALIZAR REGISTRO",
-                                type="primary",
-                                use_container_width=True
-                            )
+                        dados_editados["Matrícula"] = (
+                            matricula_editar
+                        )
+
+                        atualizar = st.form_submit_button(
+                            "💾 SALVAR ALTERAÇÕES",
+                            type="primary",
+                            use_container_width=True
                         )
 
                     if atualizar:
 
                         try:
 
-                            worksheet = get_sheet()
+                            spreadsheet, sheet = get_sheet()
 
-                            headers = [
-                                str(h).strip()
-                                for h in worksheet.row_values(1)
-                            ]
+                            headers = sheet.row_values(1)
 
-                            celula = worksheet.find(
+                            linha = localizar_matricula(
+                                sheet,
                                 matricula_editar
                             )
 
-                            if not celula:
+                            if not linha:
 
                                 st.error(
-                                    "❌ Matrícula não encontrada."
+                                    "❌ Matrícula não encontrada "
+                                    "no Google Sheets."
                                 )
 
-                            else:
+                                st.stop()
 
-                                linha = [
-                                    str(
-                                        dados_editados.get(
-                                            coluna,
-                                            ""
-                                        )
-                                    )
-                                    for coluna in headers
-                                ]
+                            nova_linha = montar_linha(
+                                headers,
+                                dados_editados
+                            )
 
-                                worksheet.update(
-                                    f"A{celula.row}",
-                                    [linha],
-                                    value_input_option="USER_ENTERED"
-                                )
+                            st.info(
+                                f"💾 Atualizando linha {linha}..."
+                            )
 
-                                st.success(
-                                    f"✅ Matrícula "
-                                    f"**{matricula_editar}** "
-                                    f"atualizada."
-                                )
+                            # --------------------------------
+                            # ATUALIZA SOMENTE A LINHA
+                            # --------------------------------
 
-                                st.cache_data.clear()
+                            sheet.update(
+                                f"A{linha}:{gspread.utils.rowcol_to_a1(linha, len(headers)).split(str(linha))[0]}{linha}",
+                                [nova_linha],
+                                value_input_option="USER_ENTERED"
+                            )
 
-                                st.rerun()
+                            st.success(
+                                f"✅ Registro da matrícula "
+                                f"**{matricula_editar}** "
+                                f"atualizado com sucesso!"
+                            )
+
+                            st.cache_data.clear()
+
+                            time.sleep(1)
+
+                            st.rerun()
 
                         except Exception as erro:
 
                             st.error(
-                                "❌ Erro ao atualizar:"
+                                "❌ ERRO AO ATUALIZAR"
                             )
 
-                            st.exception(
-                                erro
-                            )
+                            st.exception(erro)
+
 
     # ========================================================
-    # EXCLUSÃO
+    # EXCLUIR
     # ========================================================
 
     with st.expander(
-        "🗑️ Excluir Registro",
+        "🗑️ EXCLUIR REGISTRO",
         expanded=False
     ):
 
@@ -1420,35 +1293,64 @@ try:
             or "Nome" not in df.columns
         ):
 
-            st.warning(
-                "As colunas Matrícula e Nome "
-                "não foram encontradas."
+            st.error(
+                "❌ As colunas Matrícula e Nome "
+                "precisam existir."
+            )
+
+        elif df.empty:
+
+            st.info(
+                "Nenhum registro encontrado."
             )
 
         else:
 
-            opcoes_exclusao = df.apply(
-                lambda r:
-                f"{r['Matrícula']} - {r['Nome']}",
-                axis=1
-            ).tolist()
+            opcoes_exclusao = []
+
+            for _, row in df.iterrows():
+
+                matricula = limpar_valor(
+                    row.get("Matrícula", "")
+                )
+
+                nome = limpar_valor(
+                    row.get("Nome", "")
+                )
+
+                if matricula:
+
+                    opcoes_exclusao.append(
+                        f"{matricula} - {nome}"
+                    )
 
             selecionado_exclusao = st.selectbox(
                 "Selecione o militar:",
                 [""] + opcoes_exclusao,
-                key="excluir_selecionado"
+                key="militar_exclusao"
             )
 
             if selecionado_exclusao:
 
-                matricula = (
+                matricula_excluir = (
                     selecionado_exclusao
-                    .split(" - ")[0]
+                    .split(" - ", 1)[0]
                     .strip()
                 )
 
+                registro = df[
+                    df["Matrícula"].astype(str).str.strip()
+                    == matricula_excluir
+                ]
+
+                st.dataframe(
+                    registro,
+                    use_container_width=True,
+                    hide_index=True
+                )
+
                 confirmar = st.checkbox(
-                    "Confirmo a exclusão permanente.",
+                    "Confirmo que desejo excluir permanentemente este registro.",
                     key="confirmar_exclusao"
                 )
 
@@ -1463,43 +1365,44 @@ try:
 
                     try:
 
-                        worksheet = get_sheet()
+                        spreadsheet, sheet = get_sheet()
 
-                        celula = worksheet.find(
-                            matricula
+                        linha = localizar_matricula(
+                            sheet,
+                            matricula_excluir
                         )
 
-                        if not celula:
+                        if not linha:
 
                             st.error(
                                 "❌ Matrícula não encontrada."
                             )
 
-                        else:
+                            st.stop()
 
-                            worksheet.delete_rows(
-                                celula.row
-                            )
+                        sheet.delete_rows(
+                            linha
+                        )
 
-                            st.success(
-                                f"✅ Registro "
-                                f"**{matricula}** "
-                                f"excluído."
-                            )
+                        st.success(
+                            f"✅ Matrícula "
+                            f"**{matricula_excluir}** "
+                            f"excluída com sucesso."
+                        )
 
-                            st.cache_data.clear()
+                        st.cache_data.clear()
 
-                            st.rerun()
+                        time.sleep(1)
+
+                        st.rerun()
 
                     except Exception as erro:
 
                         st.error(
-                            "❌ Erro ao excluir:"
+                            "❌ ERRO AO EXCLUIR"
                         )
 
-                        st.exception(
-                            erro
-                        )
+                        st.exception(erro)
 
 
 # ============================================================
@@ -1509,13 +1412,13 @@ try:
 except KeyError as erro:
 
     st.error(
-        f"❌ Configuração ausente no Secrets: {erro}"
+        f"❌ Chave não encontrada no secrets.toml: {erro}"
     )
 
 except Exception as erro:
 
     st.error(
-        "❌ Erro geral da aplicação."
+        "❌ ERRO GERAL DA APLICAÇÃO"
     )
 
     st.exception(erro)
