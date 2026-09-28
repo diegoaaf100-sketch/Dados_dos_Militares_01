@@ -90,7 +90,6 @@ st.markdown("---")
 @st.cache_data(ttl=5)
 def load_data(sheet_id):
     url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-    # header=0 lê a linha 1 como cabeçalho
     df = pd.read_csv(url, header=0)
     df.columns = [str(col).strip().replace(":", "-") for col in df.columns]
     df = df.fillna("-")
@@ -104,10 +103,9 @@ try:
     # 1. CARREGAMENTO INICIAL DO DATAFRAME
     # ==============================================================================
     df = load_data(SHEET_ID)
-    df_filtrado = df.copy()
 
     # ==============================================================================
-    # 2. FORMULÁRIO DE CADASTRO DE NOVOS REGISTROS (50 CAMPOS)
+    # 2. FORMULÁRIO DE CADASTRO DE NOVOS REGISTROS
     # ==============================================================================
     with st.expander("➕ **Cadastrar Novo Militar**", expanded=False):
         with st.form("novo_registro_militar_form", clear_on_submit=True):
@@ -267,7 +265,6 @@ try:
                         sheet = client.open_by_key(SHEET_ID).sheet1
                         headers = sheet.row_values(1)
 
-                        # Mapeamento dos valores inseridos no formulário
                         novo_registro_map = {
                             "nº Funcional": num_funcional,
                             "Matrícula": matricula,
@@ -322,7 +319,6 @@ try:
                             "OBS": obs,
                         }
 
-                        # Constrói a linha de inserção com base na ordem exata do cabeçalho
                         linha_para_inserir = [
                             str(novo_registro_map.get(col_h, "")) for col_h in headers
                         ]
@@ -412,7 +408,6 @@ try:
 
             if militar_selecionado_edicao:
                 matricula_editar = militar_selecionado_edicao.split(" - ")[0].strip()
-
                 dados_militar = df[df["Matrícula"].astype(str) == matricula_editar].iloc[0]
 
                 st.info(f"Editando informações de: **{dados_militar.get('Nome', '')}** (Matrícula: {matricula_editar})")
@@ -589,94 +584,62 @@ try:
                                     "OBS": e_obs,
                                 }
 
-                                nova_linha_valores = [
-                                    novos_dados_map.get(col_header, str(dados_militar.get(col_header, "")))
-                                    for col_header in headers
+                                linha_atualizada = [
+                                    str(novos_dados_map.get(col_h, "")) for col_h in headers
                                 ]
 
+                                # Atualiza o intervalo completo correspondente à linha
                                 cell_range = f"A{row_idx}:{gspread.utils.rowcol_to_a1(row_idx, len(headers))}"
-                                sheet.update(cell_range, [nova_linha_valores])
+                                sheet.update(cell_range, [linha_atualizada])
 
-                                st.success(f"✅ Dados da Matrícula **{matricula_editar}** atualizados com sucesso!")
+                                st.success(f"✅ Dados do militar **{e_nome}** atualizados com sucesso!")
                                 st.cache_data.clear()
                                 st.rerun()
                             else:
-                                st.error(f"❌ Matrícula {matricula_editar} não encontrada no Google Sheets.")
+                                st.error("❌ Matrícula não localizada para atualização.")
 
-                        except Exception as err_edit:
-                            st.error(f"❌ Erro ao atualizar o registro no Google Sheets: {err_edit}")
+                        except Exception as err_update:
+                            st.error(f"❌ Erro ao atualizar o registro no Google Sheets: {err_update}")
         else:
             st.info("As colunas 'Matrícula' e 'Nome' são necessárias para utilizar a edição.")
 
     # ==============================================================================
-    # 5. FILTROS E BUSCA POR TEXTO
+    # 5. EXIBIÇÃO DE DADOS E FILTROS INTERATIVOS
     # ==============================================================================
-    def limpar_todos_os_filtros():
-        st.session_state["termo_busca_key"] = ""
-        for col in df.columns:
-            chave_filtro = f"filtro_{col}"
-            st.session_state[chave_filtro] = "Todos"
+    st.subheader("🔍 Consulta e Filtros de Dados")
 
-    st.subheader("🔍 Busca por Texto")
-    termo_busca = st.text_input(
-        "Digite algo para pesquisar na planilha inteira:",
-        value="",
-        key="termo_busca_key",
-    )
+    col_f1, col_f2, col_f3 = st.columns(3)
+    with col_f1:
+        busca_termo = st.text_input("🔎 Buscar por Nome ou Matrícula:")
+    with col_f2:
+        if "OME" in df.columns:
+            omes_unicos = ["Todas"] + sorted(list(df["OME"].astype(str).unique()))
+            filtro_ome = st.selectbox("Filtrar por OME:", omes_unicos)
+        else:
+            filtro_ome = "Todas"
+    with col_f3:
+        if "Posto/ Grad" in df.columns:
+            postos_unicos = ["Todos"] + sorted(list(df["Posto/ Grad"].astype(str).unique()))
+            filtro_posto = st.selectbox("Filtrar por Posto/Grad:", postos_unicos)
+        else:
+            filtro_posto = "Todos"
 
-    if termo_busca:
-        # Pesquisa textual case-insensitive em todas as colunas
-        mascara = df_filtrado.apply(
-            lambda row: row.astype(str).str.contains(termo_busca, case=False, na=False).any(),
-            axis=1,
-        )
-        df_filtrado = df_filtrado[mascara]
+    df_exibicao = df.copy()
 
-    # --- FILTROS POR COLUNA ---
-    with st.expander("🛠️ **Filtros Avançados por Coluna**", expanded=False):
-        c_btn, _ = st.columns([1, 4])
-        with c_btn:
-            st.button("🧹 Limpar Todos os Filtros", on_click=limpar_todos_os_filtros)
+    if busca_termo:
+        df_exibicao = df_exibicao[
+            df_exibicao["Nome"].astype(str).str.contains(busca_termo, case=False, na=False)
+            | df_exibicao["Matrícula"].astype(str).str.contains(busca_termo, case=False, na=False)
+        ]
 
-        cols_filtros = st.columns(3)
-        for idx, col in enumerate(df.columns):
-            chave_filtro = f"filtro_{col}"
-            if chave_filtro not in st.session_state:
-                st.session_state[chave_filtro] = "Todos"
+    if filtro_ome != "Todas":
+        df_exibicao = df_exibicao[df_exibicao["OME"].astype(str) == filtro_ome]
 
-            valores_unicos = ["Todos"] + sorted(
-                [str(val) for val in df[col].unique() if pd.notna(val)]
-            )
-            
-            # Distribuição dos seletores em 3 colunas
-            col_target = cols_filtros[idx % 3]
-            
-            selecao = col_target.selectbox(
-                f"Filtrar {col}:",
-                options=valores_unicos,
-                key=chave_filtro,
-            )
+    if filtro_posto != "Todos":
+        df_exibicao = df_exibicao[df_exibicao["Posto/ Grad"].astype(str) == filtro_posto]
 
-            if selecao != "Todos":
-                df_filtrado = df_filtrado[
-                    df_filtrado[col].astype(str) == selecao
-                ]
-
-    # ==============================================================================
-    # 6. EXIBIÇÃO TELA PRINCIPAL (MÉTRICAS E TABELA)
-    # ==============================================================================
-    st.markdown("---")
-    c_m1, c_m2 = st.columns(2)
-    with c_m1:
-        st.metric("Total de Militares (Base Total)", len(df))
-    with c_m2:
-        st.metric("Militares Filtrados", len(df_filtrado))
-
-    st.dataframe(
-        df_filtrado,
-        use_container_width=True,
-        hide_index=True,
-    )
+    st.markdown(f"**Total de registros encontrados:** {len(df_exibicao)}")
+    st.dataframe(df_exibicao, use_container_width=True, height=450)
 
 except Exception as e:
-    st.error(f"❌ Ocorreu um erro ao carregar a aplicação: {e}")
+    st.error(f"❌ Ocorreu um erro no carregamento da aplicação: {e}")
