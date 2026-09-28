@@ -1,7 +1,8 @@
-import streamlit as st
 import gspread
-import pandas as pd
 from google.oauth2.service_account import Credentials
+import pandas as pd
+import streamlit as st
+
 
 # ============================================================
 # CONFIGURAÇÃO
@@ -17,7 +18,62 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-NOME_ABA = "Página1"
+
+# ============================================================
+# CABEÇALHOS EXATOS DA PÁGINA 1
+# ============================================================
+
+HEADERS_ESPERADOS = [
+    "Posto/ Grad",
+    "OME QOD",
+    "Matrícula",
+    "Nome de Guerra",
+    "Nome",
+    "nº Funcional",
+    "Atividade",
+    "OME",
+    "Data da Movimentação em SP",
+    "Município",
+    "Região",
+    "OBS",
+    "Processo RR e AFASTAMENTOS SUP. A 90 DIAS ININTERRUPTOS, PUBLICADOS EM SP",
+    "ÓRGÃO",
+    "OME ANTERIOR AO ÚLTIMO SP PUBLICADO",
+    "Data de chegada na OBM Anteior",
+    "Ônus para Origem",
+    "Poder",
+    "Início da Cessão ou requisição",
+    "Ato",
+    "Doc. Publicação",
+    "SP da Adição",
+    "Renovação de cessão - Atos/Portarias/Documentos",
+    "DOE/BGSDS de renovação",
+    "Nº IDENT.",
+    "CPF",
+    "SEXO",
+    "Raça/Cor",
+    "Ano de ingresso",
+    "Data de praça",
+    "Tempo de serviço (anos)",
+    "Tempo de serviço (ano, mês, dias)",
+    "Tempo de serviço (dias)",
+    "Data da última promoção ou Implant. PCNH",
+    "Princípio da última promoção",
+    "Tempo no Posto/Grad. atual EM DIAS",
+    "SEI deslig.",
+    "Tempo na OBM atual",
+    "Hoje",
+    "Somatório LTIP gozada em anos",
+    "Somatório LTIP gozada em anos/meses/dias",
+    "Somatório de todas LTIP gozadas em dias",
+    "TOTAL DIAS EM LTIP no MESMO Posto/Grad.",
+    "INÍCIO DA LTIP",
+    "TÉRMINO DA LTIP (inserir data de apresentação)",
+    "Movimentado (apagar antes de atualizar o SP)",
+    "Suplemento de Pessoal nº/Ano",
+    "Data Suplemento de Pessoal",
+    "Fones",
+]
 
 
 # ============================================================
@@ -53,12 +109,12 @@ def check_password():
             ] = True
 
             st.session_state.pop(
-                "username",
+                "password",
                 None
             )
 
             st.session_state.pop(
-                "password",
+                "username",
                 None
             )
 
@@ -74,9 +130,7 @@ def check_password():
     ):
         return True
 
-    st.title(
-        "🔒 Acesso Restrito ao Dashboard"
-    )
+    st.title("🔒 Acesso Restrito ao Dashboard")
 
     col1, col2, col3 = st.columns(
         [1, 2, 1]
@@ -101,8 +155,7 @@ def check_password():
         )
 
         if (
-            "password_correct"
-            in st.session_state
+            "password_correct" in st.session_state
             and not st.session_state[
                 "password_correct"
             ]
@@ -120,14 +173,17 @@ if not check_password():
 
 
 # ============================================================
-# CONEXÃO COM GOOGLE SHEETS
+# GOOGLE SHEETS
 # ============================================================
 
 def get_gspread_client():
 
     credentials = (
-        Credentials.from_service_account_info(
-            st.secrets["gcp_service_account"],
+        Credentials
+        .from_service_account_info(
+            st.secrets[
+                "gcp_service_account"
+            ],
             scopes=SCOPES
         )
     )
@@ -147,67 +203,93 @@ def get_sheet():
         sheet_id
     )
 
-    sheet = spreadsheet.worksheet(
-        NOME_ABA
+    worksheet = spreadsheet.worksheet(
+        "Página1"
     )
 
-    return sheet
+    return worksheet
 
 
 # ============================================================
-# LEITURA DOS DADOS
+# LEITURA DIRETA DA PLANILHA
 # ============================================================
 
 @st.cache_data(ttl=5)
 def carregar_dados():
 
-    sheet = get_sheet()
+    worksheet = get_sheet()
 
-    valores = sheet.get_all_values()
+    valores = worksheet.get_all_values()
 
     if not valores:
 
-        return pd.DataFrame()
+        return pd.DataFrame(
+            columns=HEADERS_ESPERADOS
+        )
 
     cabecalhos = [
         str(x).strip()
         for x in valores[0]
     ]
 
-    linhas = valores[1:]
+    dados = valores[1:]
 
-    # Garante que todas as linhas tenham
-    # exatamente a mesma quantidade de colunas.
+    # --------------------------------------------------------
+    # Verificação de cabeçalhos duplicados
+    # --------------------------------------------------------
+
+    duplicados = [
+        x
+        for x in set(cabecalhos)
+        if cabecalhos.count(x) > 1
+    ]
+
+    if duplicados:
+
+        raise ValueError(
+            "Existem cabeçalhos duplicados na "
+            f"Página1: {duplicados}"
+        )
+
+    # --------------------------------------------------------
+    # Ajusta linhas para terem o mesmo tamanho
+    # --------------------------------------------------------
+
+    quantidade_colunas = len(
+        cabecalhos
+    )
+
     linhas_corrigidas = []
 
-    for linha in linhas:
+    for linha in dados:
 
         linha = list(linha)
 
-        if len(linha) < len(cabecalhos):
+        if len(linha) < quantidade_colunas:
 
-            linha.extend(
-                [""] *
-                (
-                    len(cabecalhos)
-                    - len(linha)
-                )
+            linha += [
+                ""
+            ] * (
+                quantidade_colunas
+                - len(linha)
             )
 
-        elif len(linha) > len(cabecalhos):
+        elif len(linha) > quantidade_colunas:
 
             linha = linha[
-                :len(cabecalhos)
+                :quantidade_colunas
             ]
 
         linhas_corrigidas.append(
             linha
         )
 
-    return pd.DataFrame(
+    df = pd.DataFrame(
         linhas_corrigidas,
         columns=cabecalhos
     )
+
+    return df
 
 
 # ============================================================
@@ -230,48 +312,202 @@ def texto(valor):
     return str(valor)
 
 
-def valor_existente(dados, coluna):
+def normalizar_matricula(valor):
 
-    if dados is None:
-        return ""
+    return (
+        texto(valor)
+        .strip()
+        .upper()
+    )
 
-    return texto(
+
+def localizar_coluna(headers, nome):
+
+    for i, header in enumerate(headers):
+
+        if (
+            str(header).strip()
+            == nome
+        ):
+            return i + 1
+
+    return None
+
+
+def localizar_linha_por_matricula(
+    worksheet,
+    matricula
+):
+
+    valores = worksheet.get_all_values()
+
+    if not valores:
+        return None
+
+    headers = valores[0]
+
+    coluna = localizar_coluna(
+        headers,
+        "Matrícula"
+    )
+
+    if coluna is None:
+
+        raise ValueError(
+            "A coluna Matrícula não foi "
+            "encontrada na Página1."
+        )
+
+    indice = coluna - 1
+
+    matricula_procurada = (
+        normalizar_matricula(
+            matricula
+        )
+    )
+
+    for numero_linha, linha in enumerate(
+        valores[1:],
+        start=2
+    ):
+
+        if indice < len(linha):
+
+            matricula_linha = (
+                normalizar_matricula(
+                    linha[indice]
+                )
+            )
+
+            if (
+                matricula_linha
+                == matricula_procurada
+            ):
+
+                return numero_linha
+
+    return None
+
+
+def montar_linha(
+    headers,
+    dados
+):
+
+    linha = []
+
+    for header in headers:
+
+        valor = dados.get(
+            header,
+            ""
+        )
+
+        linha.append(
+            texto(valor)
+        )
+
+    return linha
+
+
+def verificar_estrutura(
+    worksheet
+):
+
+    headers = [
+        str(x).strip()
+        for x in worksheet.row_values(1)
+    ]
+
+    if not headers:
+
+        raise ValueError(
+            "A primeira linha da Página1 "
+            "está vazia."
+        )
+
+    duplicados = [
+        x
+        for x in set(headers)
+        if headers.count(x) > 1
+    ]
+
+    if duplicados:
+
+        raise ValueError(
+            "Existem colunas duplicadas: "
+            f"{duplicados}"
+        )
+
+    faltantes = [
+        x
+        for x in HEADERS_ESPERADOS
+        if x not in headers
+    ]
+
+    if faltantes:
+
+        raise ValueError(
+            "As seguintes colunas esperadas "
+            "não foram encontradas:\n\n"
+            + "\n".join(
+                f"- {x}"
+                for x in faltantes
+            )
+        )
+
+    return headers
+
+
+# ============================================================
+# FORMULÁRIO
+# ============================================================
+
+def campo_texto(
+    label,
+    dados,
+    chave,
+    coluna,
+    tipo="text"
+):
+
+    valor = texto(
         dados.get(
             coluna,
             ""
         )
     )
 
+    if tipo == "area":
 
-def limpar_cache():
+        return st.text_area(
+            label,
+            value=valor,
+            key=chave
+        )
 
-    st.cache_data.clear()
+    return st.text_input(
+        label,
+        value=valor,
+        key=chave
+    )
 
 
-# ============================================================
-# FUNÇÃO PARA MONTAR FORMULÁRIO
-# ============================================================
-
-def formulario_militar(
-    dados=None,
-    prefixo="novo"
+def criar_formulario(
+    dados,
+    prefixo
 ):
 
     if dados is None:
         dados = {}
 
-    def v(coluna):
-
-        return valor_existente(
-            dados,
-            coluna
-        )
+    resultado = {}
 
     # ========================================================
     # ABA 1
     # ========================================================
 
-    tab_pessoal, tab_lotacao, tab_cessao, tab_ltip, tab_outros = st.tabs(
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(
         [
             "👤 Identificação & Pessoal",
             "🏢 Lotação & Promoção",
@@ -282,60 +518,65 @@ def formulario_militar(
     )
 
     # ========================================================
-    # PESSOAL
+    # IDENTIFICAÇÃO
     # ========================================================
 
-    with tab_pessoal:
+    with tab1:
 
         c1, c2, c3 = st.columns(3)
 
         with c1:
 
-            num_funcional = st.text_input(
-                "nº Funcional:",
-                value=v("nº Funcional"),
-                key=f"{prefixo}_num_funcional"
+            resultado["Matrícula"] = campo_texto(
+                "Matrícula",
+                dados,
+                f"{prefixo}_matricula",
+                "Matrícula"
             )
 
-            matricula = st.text_input(
-                "Matrícula:",
-                value=v("Matrícula"),
-                key=f"{prefixo}_matricula"
+            resultado["nº Funcional"] = campo_texto(
+                "nº Funcional",
+                dados,
+                f"{prefixo}_funcional",
+                "nº Funcional"
             )
 
-            cpf_ponto = st.text_input(
-                "CPF.:",
-                value=v("CPF."),
-                key=f"{prefixo}_cpf_ponto"
+            resultado["Nº IDENT."] = campo_texto(
+                "Nº IDENT.",
+                dados,
+                f"{prefixo}_ident",
+                "Nº IDENT."
             )
 
-            cpf = st.text_input(
-                "CPF:",
-                value=v("CPF"),
-                key=f"{prefixo}_cpf"
-            )
-
-            num_ident = st.text_input(
-                "Nº IDENT.:",
-                value=v("Nº IDENT."),
-                key=f"{prefixo}_num_ident"
+            resultado["CPF"] = campo_texto(
+                "CPF",
+                dados,
+                f"{prefixo}_cpf",
+                "CPF"
             )
 
         with c2:
 
-            nome = st.text_input(
-                "Nome:",
-                value=v("Nome"),
-                key=f"{prefixo}_nome"
+            resultado["Nome"] = campo_texto(
+                "Nome",
+                dados,
+                f"{prefixo}_nome",
+                "Nome"
             )
 
-            nome_guerra = st.text_input(
-                "Nome de Guerra:",
-                value=v("Nome de Guerra"),
-                key=f"{prefixo}_nome_guerra"
+            resultado["Nome de Guerra"] = campo_texto(
+                "Nome de Guerra",
+                dados,
+                f"{prefixo}_nome_guerra",
+                "Nome de Guerra"
             )
 
-            sexo_atual = v("SEXO").upper()
+            sexo_atual = texto(
+                dados.get(
+                    "SEXO",
+                    ""
+                )
+            ).upper()
 
             opcoes_sexo = [
                 "",
@@ -343,24 +584,25 @@ def formulario_militar(
                 "FEMININO"
             ]
 
-            idx_sexo = (
-                opcoes_sexo.index(
-                    sexo_atual
-                )
-                if sexo_atual
-                in opcoes_sexo
-                else 0
-            )
-
-            sexo = st.selectbox(
-                "SEXO:",
+            resultado["SEXO"] = st.selectbox(
+                "SEXO",
                 opcoes_sexo,
-                index=idx_sexo,
+                index=(
+                    opcoes_sexo.index(
+                        sexo_atual
+                    )
+                    if sexo_atual
+                    in opcoes_sexo
+                    else 0
+                ),
                 key=f"{prefixo}_sexo"
             )
 
-            raca_atual = v(
-                "Raça/Cor"
+            raca_atual = texto(
+                dados.get(
+                    "Raça/Cor",
+                    ""
+                )
             ).upper()
 
             opcoes_raca = [
@@ -372,206 +614,229 @@ def formulario_militar(
                 "INDÍGENA"
             ]
 
-            idx_raca = (
-                opcoes_raca.index(
-                    raca_atual
-                )
-                if raca_atual
-                in opcoes_raca
-                else 0
-            )
-
-            raca_cor = st.selectbox(
-                "Raça/Cor:",
+            resultado["Raça/Cor"] = st.selectbox(
+                "Raça/Cor",
                 opcoes_raca,
-                index=idx_raca,
+                index=(
+                    opcoes_raca.index(
+                        raca_atual
+                    )
+                    if raca_atual
+                    in opcoes_raca
+                    else 0
+                ),
                 key=f"{prefixo}_raca"
             )
 
         with c3:
 
-            posto_grad = st.text_input(
-                "Posto/ Grad:",
-                value=v("Posto/ Grad"),
-                key=f"{prefixo}_posto_grad"
+            resultado["Posto/ Grad"] = campo_texto(
+                "Posto/ Grad",
+                dados,
+                f"{prefixo}_posto",
+                "Posto/ Grad"
             )
 
-            fones = st.text_input(
-                "Fones:",
-                value=v("Fones"),
-                key=f"{prefixo}_fones"
+            resultado["Fones"] = campo_texto(
+                "Fones",
+                dados,
+                f"{prefixo}_fones",
+                "Fones"
             )
 
-            ano_ingresso = st.text_input(
-                "Ano de ingresso:",
-                value=v("Ano de ingresso"),
-                key=f"{prefixo}_ano_ingresso"
+            resultado["Ano de ingresso"] = campo_texto(
+                "Ano de ingresso",
+                dados,
+                f"{prefixo}_ano",
+                "Ano de ingresso"
             )
 
-            data_praca = st.text_input(
-                "Data de praça:",
-                value=v("Data de praça"),
-                key=f"{prefixo}_data_praca"
+            resultado["Data de praça"] = campo_texto(
+                "Data de praça",
+                dados,
+                f"{prefixo}_praca",
+                "Data de praça"
             )
 
     # ========================================================
     # LOTAÇÃO
     # ========================================================
 
-    with tab_lotacao:
+    with tab2:
 
         c1, c2, c3 = st.columns(3)
 
         with c1:
 
-            ome = st.text_input(
-                "OME:",
-                value=v("OME"),
-                key=f"{prefixo}_ome"
+            resultado["OME"] = campo_texto(
+                "OME",
+                dados,
+                f"{prefixo}_ome",
+                "OME"
             )
 
-            ome_qod = st.text_input(
-                "OME QOD:",
-                value=v("OME QOD"),
-                key=f"{prefixo}_ome_qod"
+            resultado["OME QOD"] = campo_texto(
+                "OME QOD",
+                dados,
+                f"{prefixo}_ome_qod",
+                "OME QOD"
             )
 
-            atividade = st.text_input(
-                "Atividade:",
-                value=v("Atividade"),
-                key=f"{prefixo}_atividade"
+            resultado["Atividade"] = campo_texto(
+                "Atividade",
+                dados,
+                f"{prefixo}_atividade",
+                "Atividade"
             )
 
-            municipio = st.text_input(
-                "Município:",
-                value=v("Município"),
-                key=f"{prefixo}_municipio"
+            resultado["Município"] = campo_texto(
+                "Município",
+                dados,
+                f"{prefixo}_municipio",
+                "Município"
             )
 
-            regiao = st.text_input(
-                "Região:",
-                value=v("Região"),
-                key=f"{prefixo}_regiao"
+            resultado["Região"] = campo_texto(
+                "Região",
+                dados,
+                f"{prefixo}_regiao",
+                "Região"
             )
 
         with c2:
 
-            tempo_servico_anos = st.text_input(
-                "Tempo de serviço (anos):",
-                value=v(
-                    "Tempo de serviço (anos)"
-                ),
-                key=f"{prefixo}_tempo_anos"
+            resultado[
+                "Tempo de serviço (anos)"
+            ] = campo_texto(
+                "Tempo de serviço (anos)",
+                dados,
+                f"{prefixo}_tempo_anos",
+                "Tempo de serviço (anos)"
             )
 
-            tempo_servico_amd = st.text_input(
-                "Tempo de serviço (ano, mês, dias):",
-                value=v(
-                    "Tempo de serviço (ano, mês, dias)"
-                ),
-                key=f"{prefixo}_tempo_amd"
+            resultado[
+                "Tempo de serviço (ano, mês, dias)"
+            ] = campo_texto(
+                "Tempo de serviço (ano, mês, dias)",
+                dados,
+                f"{prefixo}_tempo_amd",
+                "Tempo de serviço (ano, mês, dias)"
             )
 
-            tempo_servico_dias = st.text_input(
-                "Tempo de serviço (dias):",
-                value=v(
-                    "Tempo de serviço (dias)"
-                ),
-                key=f"{prefixo}_tempo_dias"
+            resultado[
+                "Tempo de serviço (dias)"
+            ] = campo_texto(
+                "Tempo de serviço (dias)",
+                dados,
+                f"{prefixo}_tempo_dias",
+                "Tempo de serviço (dias)"
             )
 
-            tempo_obm_atual = st.text_input(
-                "Tempo na OBM atual:",
-                value=v(
-                    "Tempo na OBM atual"
-                ),
-                key=f"{prefixo}_tempo_obm"
+            resultado[
+                "Tempo na OBM atual"
+            ] = campo_texto(
+                "Tempo na OBM atual",
+                dados,
+                f"{prefixo}_tempo_obm",
+                "Tempo na OBM atual"
             )
 
         with c3:
 
-            data_ult_promocao = st.text_input(
-                "Data da última promoção ou Implant. PCNH:",
-                value=v(
-                    "Data da última promoção ou Implant. PCNH"
-                ),
-                key=f"{prefixo}_data_promocao"
+            resultado[
+                "Data da última promoção ou Implant. PCNH"
+            ] = campo_texto(
+                "Data da última promoção ou Implant. PCNH",
+                dados,
+                f"{prefixo}_promocao_data",
+                "Data da última promoção ou Implant. PCNH"
             )
 
-            principio_ult_promocao = st.text_input(
-                "Princípio da última promoção:",
-                value=v(
-                    "Princípio da última promoção"
-                ),
-                key=f"{prefixo}_principio"
+            resultado[
+                "Princípio da última promoção"
+            ] = campo_texto(
+                "Princípio da última promoção",
+                dados,
+                f"{prefixo}_promocao_principio",
+                "Princípio da última promoção"
             )
 
-            tempo_posto_atual_dias = st.text_input(
-                "Tempo no Posto/Grad. atual EM DIAS:",
-                value=v(
-                    "Tempo no Posto/Grad. atual EM DIAS"
-                ),
-                key=f"{prefixo}_tempo_posto"
+            resultado[
+                "Tempo no Posto/Grad. atual EM DIAS"
+            ] = campo_texto(
+                "Tempo no Posto/Grad. atual EM DIAS",
+                dados,
+                f"{prefixo}_tempo_posto",
+                "Tempo no Posto/Grad. atual EM DIAS"
             )
 
     # ========================================================
     # CESSÃO
     # ========================================================
 
-    with tab_cessao:
+    with tab3:
 
         c1, c2, c3 = st.columns(3)
 
         with c1:
 
-            data_mov_sp = st.text_input(
-                "Data da Movimentação em SP:",
-                value=v(
-                    "Data da Movimentação em SP"
-                ),
-                key=f"{prefixo}_data_mov_sp"
+            resultado[
+                "Data da Movimentação em SP"
+            ] = campo_texto(
+                "Data da Movimentação em SP",
+                dados,
+                f"{prefixo}_mov_sp",
+                "Data da Movimentação em SP"
             )
 
-            ome_anterior = st.text_input(
-                "OME ANTERIOR AO ÚLTIMO SP PUBLICADO:",
-                value=v(
-                    "OME ANTERIOR AO ÚLTIMO SP PUBLICADO"
-                ),
-                key=f"{prefixo}_ome_anterior"
+            resultado[
+                "OME ANTERIOR AO ÚLTIMO SP PUBLICADO"
+            ] = campo_texto(
+                "OME ANTERIOR AO ÚLTIMO SP PUBLICADO",
+                dados,
+                f"{prefixo}_ome_anterior",
+                "OME ANTERIOR AO ÚLTIMO SP PUBLICADO"
             )
 
-            data_chegada = st.text_input(
-                "Data de chegada na OBM Anteior:",
-                value=v(
-                    "Data de chegada na OBM Anteior"
-                ),
-                key=f"{prefixo}_data_chegada"
+            resultado[
+                "Data de chegada na OBM Anteior"
+            ] = campo_texto(
+                "Data de chegada na OBM Anteior",
+                dados,
+                f"{prefixo}_chegada",
+                "Data de chegada na OBM Anteior"
             )
 
-            movimentado = st.text_input(
-                "Movimentado (apagar antes de atualizar o SP):",
-                value=v(
-                    "Movimentado (apagar antes de atualizar o SP)"
-                ),
-                key=f"{prefixo}_movimentado"
+            resultado[
+                "Movimentado (apagar antes de atualizar o SP)"
+            ] = campo_texto(
+                "Movimentado (apagar antes de atualizar o SP)",
+                dados,
+                f"{prefixo}_movimentado",
+                "Movimentado (apagar antes de atualizar o SP)"
             )
 
         with c2:
 
-            orgao = st.text_input(
-                "ÓRGÃO:",
-                value=v("ÓRGÃO"),
-                key=f"{prefixo}_orgao"
+            resultado["ÓRGÃO"] = campo_texto(
+                "ÓRGÃO",
+                dados,
+                f"{prefixo}_orgao",
+                "ÓRGÃO"
             )
 
-            poder = st.text_input(
-                "Poder:",
-                value=v("Poder"),
-                key=f"{prefixo}_poder"
+            resultado["Poder"] = campo_texto(
+                "Poder",
+                dados,
+                f"{prefixo}_poder",
+                "Poder"
             )
 
-            onus_atual = v(
-                "Ônus para Origem"
+            onus_atual = texto(
+                dados.get(
+                    "Ônus para Origem",
+                    ""
+                )
             ).upper()
 
             opcoes_onus = [
@@ -580,596 +845,203 @@ def formulario_militar(
                 "NÃO"
             ]
 
-            idx_onus = (
-                opcoes_onus.index(
-                    onus_atual
-                )
-                if onus_atual
-                in opcoes_onus
-                else 0
-            )
-
-            onus_origem = st.selectbox(
-                "Ônus para Origem:",
+            resultado[
+                "Ônus para Origem"
+            ] = st.selectbox(
+                "Ônus para Origem",
                 opcoes_onus,
-                index=idx_onus,
+                index=(
+                    opcoes_onus.index(
+                        onus_atual
+                    )
+                    if onus_atual
+                    in opcoes_onus
+                    else 0
+                ),
                 key=f"{prefixo}_onus"
             )
 
-            inicio_cessao = st.text_input(
-                "Início da Cessão ou requisição:",
-                value=v(
-                    "Início da Cessão ou requisição"
-                ),
-                key=f"{prefixo}_inicio_cessao"
+            resultado[
+                "Início da Cessão ou requisição"
+            ] = campo_texto(
+                "Início da Cessão ou requisição",
+                dados,
+                f"{prefixo}_inicio_cessao",
+                "Início da Cessão ou requisição"
             )
 
         with c3:
 
-            renovacao = st.text_input(
-                "Renovação de cessão - Atos/Portarias/Documentos:",
-                value=v(
-                    "Renovação de cessão - Atos/Portarias/Documentos"
-                ),
-                key=f"{prefixo}_renovacao"
+            resultado[
+                "Renovação de cessão - Atos/Portarias/Documentos"
+            ] = campo_texto(
+                "Renovação de cessão - Atos/Portarias/Documentos",
+                dados,
+                f"{prefixo}_renovacao",
+                "Renovação de cessão - Atos/Portarias/Documentos"
             )
 
-            doe = st.text_input(
-                "DOE/BGSDS de renovação:",
-                value=v(
-                    "DOE/BGSDS de renovação"
-                ),
-                key=f"{prefixo}_doe"
+            resultado[
+                "DOE/BGSDS de renovação"
+            ] = campo_texto(
+                "DOE/BGSDS de renovação",
+                dados,
+                f"{prefixo}_doe",
+                "DOE/BGSDS de renovação"
             )
 
-            sei = st.text_input(
-                "SEI deslig.:",
-                value=v("SEI deslig."),
-                key=f"{prefixo}_sei"
+            resultado["SEI deslig."] = campo_texto(
+                "SEI deslig.",
+                dados,
+                f"{prefixo}_sei",
+                "SEI deslig."
             )
 
     # ========================================================
     # LTIP
     # ========================================================
 
-    with tab_ltip:
+    with tab4:
 
         c1, c2 = st.columns(2)
 
         with c1:
 
-            afastamentos = st.text_area(
-                "Processo RR e AFASTAMENTOS SUP. A 90 DIAS "
-                "ININTERRUPTOS, PUBLICADOS EM SP:",
-                value=v(
-                    "Processo RR e AFASTAMENTOS SUP. A 90 DIAS "
-                    "ININTERRUPTOS, PUBLICADOS EM SP"
-                ),
-                key=f"{prefixo}_afastamentos"
+            resultado[
+                "Processo RR e AFASTAMENTOS SUP. A 90 DIAS ININTERRUPTOS, PUBLICADOS EM SP"
+            ] = campo_texto(
+                "Processo RR e AFASTAMENTOS SUP. A 90 DIAS ININTERRUPTOS, PUBLICADOS EM SP",
+                dados,
+                f"{prefixo}_afastamentos",
+                "Processo RR e AFASTAMENTOS SUP. A 90 DIAS ININTERRUPTOS, PUBLICADOS EM SP",
+                tipo="area"
             )
 
-            inicio_ltip = st.text_input(
-                "INÍCIO DA LTIP:",
-                value=v("INÍCIO DA LTIP"),
-                key=f"{prefixo}_inicio_ltip"
+            resultado[
+                "INÍCIO DA LTIP"
+            ] = campo_texto(
+                "INÍCIO DA LTIP",
+                dados,
+                f"{prefixo}_inicio_ltip",
+                "INÍCIO DA LTIP"
             )
 
-            termino_ltip = st.text_input(
-                "TÉRMINO DA LTIP (inserir data de apresentação):",
-                value=v(
-                    "TÉRMINO DA LTIP (inserir data de apresentação)"
-                ),
-                key=f"{prefixo}_termino_ltip"
+            resultado[
+                "TÉRMINO DA LTIP (inserir data de apresentação)"
+            ] = campo_texto(
+                "TÉRMINO DA LTIP (inserir data de apresentação)",
+                dados,
+                f"{prefixo}_termino_ltip",
+                "TÉRMINO DA LTIP (inserir data de apresentação)"
             )
 
         with c2:
 
-            somatorio_anos = st.text_input(
-                "Somatório LTIP gozada em anos:",
-                value=v(
-                    "Somatório LTIP gozada em anos"
-                ),
-                key=f"{prefixo}_somatorio_anos"
+            resultado[
+                "Somatório LTIP gozada em anos"
+            ] = campo_texto(
+                "Somatório LTIP gozada em anos",
+                dados,
+                f"{prefixo}_ltip_anos",
+                "Somatório LTIP gozada em anos"
             )
 
-            somatorio_amd = st.text_input(
-                "Somatório LTIP gozada em anos/meses/dias:",
-                value=v(
-                    "Somatório LTIP gozada em anos/meses/dias"
-                ),
-                key=f"{prefixo}_somatorio_amd"
+            resultado[
+                "Somatório LTIP gozada em anos/meses/dias"
+            ] = campo_texto(
+                "Somatório LTIP gozada em anos/meses/dias",
+                dados,
+                f"{prefixo}_ltip_amd",
+                "Somatório LTIP gozada em anos/meses/dias"
             )
 
-            somatorio_dias = st.text_input(
-                "Somatório de todas LTIP gozadas em dias:",
-                value=v(
-                    "Somatório de todas LTIP gozadas em dias"
-                ),
-                key=f"{prefixo}_somatorio_dias"
+            resultado[
+                "Somatório de todas LTIP gozadas em dias"
+            ] = campo_texto(
+                "Somatório de todas LTIP gozadas em dias",
+                dados,
+                f"{prefixo}_ltip_dias",
+                "Somatório de todas LTIP gozadas em dias"
             )
 
-            total_ltip = st.text_input(
-                "TOTAL DIAS EM LTIP no MESMO Posto/Grad.:",
-                value=v(
-                    "TOTAL DIAS EM LTIP no MESMO Posto/Grad."
-                ),
-                key=f"{prefixo}_total_ltip"
+            resultado[
+                "TOTAL DIAS EM LTIP no MESMO Posto/Grad."
+            ] = campo_texto(
+                "TOTAL DIAS EM LTIP no MESMO Posto/Grad.",
+                dados,
+                f"{prefixo}_total_ltip",
+                "TOTAL DIAS EM LTIP no MESMO Posto/Grad."
             )
 
     # ========================================================
     # DOCUMENTOS
     # ========================================================
 
-    with tab_outros:
+    with tab5:
 
         c1, c2 = st.columns(2)
 
         with c1:
 
-            ato = st.text_input(
-                "Ato:",
-                value=v("Ato"),
-                key=f"{prefixo}_ato"
+            resultado["Ato"] = campo_texto(
+                "Ato",
+                dados,
+                f"{prefixo}_ato",
+                "Ato"
             )
 
-            doc_publicacao = st.text_input(
-                "Doc. Publicação:",
-                value=v("Doc. Publicação"),
-                key=f"{prefixo}_doc_publicacao"
+            resultado["Doc. Publicação"] = campo_texto(
+                "Doc. Publicação",
+                dados,
+                f"{prefixo}_doc",
+                "Doc. Publicação"
             )
 
-            sp_adicao = st.text_input(
-                "SP da Adição:",
-                value=v("SP da Adição"),
-                key=f"{prefixo}_sp_adicao"
+            resultado["SP da Adição"] = campo_texto(
+                "SP da Adição",
+                dados,
+                f"{prefixo}_sp",
+                "SP da Adição"
             )
 
-            processo_rr = st.text_input(
-                "Processo RR:",
-                value=v("Processo RR"),
-                key=f"{prefixo}_processo_rr"
+            resultado[
+                "Suplemento de Pessoal nº/Ano"
+            ] = campo_texto(
+                "Suplemento de Pessoal nº/Ano",
+                dados,
+                f"{prefixo}_suplemento",
+                "Suplemento de Pessoal nº/Ano"
+            )
+
+            resultado[
+                "Data Suplemento de Pessoal"
+            ] = campo_texto(
+                "Data Suplemento de Pessoal",
+                dados,
+                f"{prefixo}_data_suplemento",
+                "Data Suplemento de Pessoal"
             )
 
         with c2:
 
-            suplemento = st.text_input(
-                "Suplemento de Pessoal nº/Ano:",
-                value=v(
-                    "Suplemento de Pessoal nº/Ano"
-                ),
-                key=f"{prefixo}_suplemento"
+            resultado["Hoje"] = campo_texto(
+                "Hoje",
+                dados,
+                f"{prefixo}_hoje",
+                "Hoje"
             )
 
-            data_suplemento = st.text_input(
-                "Data Suplemento de Pessoal:",
-                value=v(
-                    "Data Suplemento de Pessoal"
-                ),
-                key=f"{prefixo}_data_suplemento"
+            resultado[
+                "OBS"
+            ] = campo_texto(
+                "OBS",
+                dados,
+                f"{prefixo}_obs",
+                "OBS",
+                tipo="area"
             )
 
-            hoje = st.text_input(
-                "Hoje:",
-                value=v("Hoje"),
-                key=f"{prefixo}_hoje"
-            )
-
-            obs = st.text_area(
-                "OBS:",
-                value=v("OBS"),
-                key=f"{prefixo}_obs"
-            )
-
-    # ========================================================
-    # RETORNO
-    # ========================================================
-
-    return {
-
-        "nº Funcional": num_funcional,
-        "Matrícula": matricula,
-        "CPF.": cpf_ponto,
-        "CPF": cpf,
-        "Nº IDENT.": num_ident,
-        "Nome": nome,
-        "Nome de Guerra": nome_guerra,
-        "SEXO": sexo,
-        "Raça/Cor": raca_cor,
-        "Posto/ Grad": posto_grad,
-        "Fones": fones,
-        "Ano de ingresso": ano_ingresso,
-        "Data de praça": data_praca,
-
-        "OME": ome,
-        "OME QOD": ome_qod,
-        "Atividade": atividade,
-        "Município": municipio,
-        "Região": regiao,
-
-        "Tempo de serviço (anos)": tempo_servico_anos,
-        "Tempo de serviço (ano, mês, dias)": tempo_servico_amd,
-        "Tempo de serviço (dias)": tempo_servico_dias,
-        "Tempo na OBM atual": tempo_obm_atual,
-
-        "Data da última promoção ou Implant. PCNH":
-            data_ult_promocao,
-
-        "Princípio da última promoção":
-            principio_ult_promocao,
-
-        "Tempo no Posto/Grad. atual EM DIAS":
-            tempo_posto_atual_dias,
-
-        "Data da Movimentação em SP":
-            data_mov_sp,
-
-        "OME ANTERIOR AO ÚLTIMO SP PUBLICADO":
-            ome_anterior,
-
-        "Data de chegada na OBM Anteior":
-            data_chegada,
-
-        "Movimentado (apagar antes de atualizar o SP)":
-            movimentado,
-
-        "ÓRGÃO": orgao,
-        "Poder": poder,
-        "Ônus para Origem": onus_origem,
-
-        "Início da Cessão ou requisição":
-            inicio_cessao,
-
-        "Renovação de cessão - Atos/Portarias/Documentos":
-            renovacao,
-
-        "DOE/BGSDS de renovação":
-            doe,
-
-        "SEI deslig.": sei,
-
-        "Processo RR e AFASTAMENTOS SUP. A 90 DIAS ININTERRUPTOS, PUBLICADOS EM SP":
-            afastamentos,
-
-        "INÍCIO DA LTIP":
-            inicio_ltip,
-
-        "TÉRMINO DA LTIP (inserir data de apresentação)":
-            termino_ltip,
-
-        "Somatório LTIP gozada em anos":
-            somatorio_anos,
-
-        "Somatório LTIP gozada em anos/meses/dias":
-            somatorio_amd,
-
-        "Somatório de todas LTIP gozadas em dias":
-            somatorio_dias,
-
-        "TOTAL DIAS EM LTIP no MESMO Posto/Grad.":
-            total_ltip,
-
-        "Ato": ato,
-        "Doc. Publicação": doc_publicacao,
-        "SP da Adição": sp_adicao,
-        "Processo RR": processo_rr,
-
-        "Suplemento de Pessoal nº/Ano":
-            suplemento,
-
-        "Data Suplemento de Pessoal":
-            data_suplemento,
-
-        "Hoje": hoje,
-        "OBS": obs,
-    }
-
-
-# ============================================================
-# FUNÇÃO DE GRAVAÇÃO DE NOVO CADASTRO
-# ============================================================
-
-def salvar_novo_cadastro(dados):
-
-    sheet = get_sheet()
-
-    headers = sheet.row_values(1)
-
-    if not headers:
-
-        raise Exception(
-            "A primeira linha da Página1 não possui cabeçalhos."
-        )
-
-    headers = [
-        str(h).strip()
-        for h in headers
-    ]
-
-    if "Matrícula" not in headers:
-
-        raise Exception(
-            "A coluna 'Matrícula' não existe na Página1."
-        )
-
-    if "Nome" not in headers:
-
-        raise Exception(
-            "A coluna 'Nome' não existe na Página1."
-        )
-
-    matricula = texto(
-        dados.get("Matrícula")
-    ).strip()
-
-    nome = texto(
-        dados.get("Nome")
-    ).strip()
-
-    if not matricula:
-
-        raise Exception(
-            "Informe a Matrícula."
-        )
-
-    if not nome:
-
-        raise Exception(
-            "Informe o Nome."
-        )
-
-    # --------------------------------------------------------
-    # Verifica duplicidade
-    # --------------------------------------------------------
-
-    coluna_matricula = (
-        headers.index("Matrícula")
-        + 1
-    )
-
-    valores = sheet.col_values(
-        coluna_matricula
-    )
-
-    matriculas = {
-        texto(x).strip()
-        for x in valores[1:]
-        if texto(x).strip()
-    }
-
-    if matricula in matriculas:
-
-        raise Exception(
-            f"A matrícula {matricula} já existe."
-        )
-
-    # --------------------------------------------------------
-    # Monta a linha EXATAMENTE na ordem dos cabeçalhos
-    # --------------------------------------------------------
-
-    nova_linha = []
-
-    for header in headers:
-
-        valor = dados.get(
-            header,
-            ""
-        )
-
-        nova_linha.append(
-            texto(valor)
-        )
-
-    # --------------------------------------------------------
-    # Grava
-    # --------------------------------------------------------
-
-    sheet.append_row(
-        nova_linha,
-        value_input_option="USER_ENTERED"
-    )
-
-    return True
-
-
-# ============================================================
-# FUNÇÃO DE ATUALIZAÇÃO
-# ============================================================
-
-def atualizar_cadastro(
-    matricula_original,
-    dados_novos
-):
-
-    sheet = get_sheet()
-
-    headers = [
-        str(h).strip()
-        for h in sheet.row_values(1)
-    ]
-
-    if not headers:
-
-        raise Exception(
-            "A Página1 não possui cabeçalhos."
-        )
-
-    if "Matrícula" not in headers:
-
-        raise Exception(
-            "A coluna Matrícula não existe."
-        )
-
-    # --------------------------------------------------------
-    # Localiza pela coluna Matrícula
-    # --------------------------------------------------------
-
-    coluna_matricula = (
-        headers.index("Matrícula")
-        + 1
-    )
-
-    valores = sheet.col_values(
-        coluna_matricula
-    )
-
-    linha_planilha = None
-
-    for numero_linha, valor in enumerate(
-        valores,
-        start=1
-    ):
-
-        if numero_linha == 1:
-            continue
-
-        if (
-            texto(valor).strip()
-            == texto(
-                matricula_original
-            ).strip()
-        ):
-
-            linha_planilha = numero_linha
-            break
-
-    if linha_planilha is None:
-
-        raise Exception(
-            f"A matrícula "
-            f"{matricula_original} "
-            f"não foi encontrada."
-        )
-
-    # --------------------------------------------------------
-    # IMPORTANTE:
-    # Lê a linha atual antes de alterar.
-    # Isso impede apagar dados existentes.
-    # --------------------------------------------------------
-
-    linha_atual = sheet.row_values(
-        linha_planilha
-    )
-
-    while len(linha_atual) < len(headers):
-
-        linha_atual.append("")
-
-    # --------------------------------------------------------
-    # Altera SOMENTE as colunas presentes
-    # no formulário.
-    # --------------------------------------------------------
-
-    for indice, header in enumerate(
-        headers
-    ):
-
-        if header in dados_novos:
-
-            valor = dados_novos[
-                header
-            ]
-
-            linha_atual[
-                indice
-            ] = texto(valor)
-
-    # Matrícula permanece a original
-    linha_atual[
-        coluna_matricula - 1
-    ] = texto(
-        matricula_original
-    )
-
-    # --------------------------------------------------------
-    # Grava a linha completa já preservada
-    # --------------------------------------------------------
-
-    intervalo = (
-        f"A{linha_planilha}:"
-        f"{gspread.utils.rowcol_to_a1(
-            linha_planilha,
-            len(headers)
-        ).replace(
-            str(linha_planilha),
-            ""
-        )}{linha_planilha}"
-    )
-
-    # Forma mais segura para determinar
-    # a última coluna.
-    ultima_coluna = (
-        gspread.utils.rowcol_to_a1(
-            1,
-            len(headers)
-        ).replace("1", "")
-    )
-
-    intervalo = (
-        f"A{linha_planilha}:"
-        f"{ultima_coluna}{linha_planilha}"
-    )
-
-    sheet.update(
-        intervalo,
-        [linha_atual],
-        value_input_option="USER_ENTERED"
-    )
-
-    return True
-
-
-# ============================================================
-# FUNÇÃO DE EXCLUSÃO
-# ============================================================
-
-def excluir_cadastro(
-    matricula
-):
-
-    sheet = get_sheet()
-
-    headers = [
-        str(h).strip()
-        for h in sheet.row_values(1)
-    ]
-
-    if "Matrícula" not in headers:
-
-        raise Exception(
-            "A coluna Matrícula não existe."
-        )
-
-    coluna = (
-        headers.index("Matrícula")
-        + 1
-    )
-
-    valores = sheet.col_values(
-        coluna
-    )
-
-    for numero_linha, valor in enumerate(
-        valores,
-        start=1
-    ):
-
-        if numero_linha == 1:
-            continue
-
-        if (
-            texto(valor).strip()
-            == texto(matricula).strip()
-        ):
-
-            sheet.delete_rows(
-                numero_linha
-            )
-
-            return True
-
-    raise Exception(
-        f"Matrícula {matricula} não encontrada."
-    )
+    return resultado
 
 
 # ============================================================
@@ -1192,10 +1064,10 @@ if st.sidebar.button(
 
 
 if st.sidebar.button(
-    "🔄 Atualizar Dashboard"
+    "🔄 Forçar Atualização"
 ):
 
-    limpar_cache()
+    st.cache_data.clear()
 
     st.rerun()
 
@@ -1204,11 +1076,11 @@ if st.sidebar.button(
 # CABEÇALHO
 # ============================================================
 
-col1, col2, col3 = st.columns(
-    [1, 2, 1]
+col1, col2, col3, col4 = st.columns(
+    [2, 1, 1, 2]
 )
 
-with col1:
+with col2:
 
     try:
         st.image(
@@ -1240,24 +1112,48 @@ st.markdown("---")
 
 
 # ============================================================
-# CARREGA DADOS
+# CARREGA PLANILHA
 # ============================================================
 
 try:
+
+    worksheet = get_sheet()
+
+    headers = verificar_estrutura(
+        worksheet
+    )
 
     df = carregar_dados()
 
 except Exception as erro:
 
     st.error(
-        "❌ Erro ao carregar a Página1."
+        "❌ Não foi possível carregar a "
+        "Página1 do Google Sheets."
     )
 
-    st.exception(
-        erro
-    )
+    st.exception(erro)
 
     st.stop()
+
+
+# ============================================================
+# MENSAGEM APÓS OPERAÇÃO
+# ============================================================
+
+if st.session_state.get(
+    "mensagem_sucesso"
+):
+
+    st.success(
+        st.session_state[
+            "mensagem_sucesso"
+        ]
+    )
+
+    del st.session_state[
+        "mensagem_sucesso"
+    ]
 
 
 # ============================================================
@@ -1268,29 +1164,27 @@ st.subheader(
     "📋 Visualização dos Registros"
 )
 
-if df.empty:
+st.caption(
+    f"Conectado diretamente à aba Página1 • "
+    f"{len(df)} registros • "
+    f"{len(headers)} colunas"
+)
 
-    st.warning(
-        "A Página1 não possui registros."
-    )
+st.dataframe(
+    df,
+    use_container_width=True,
+    hide_index=True
+)
 
-else:
-
-    st.dataframe(
-        df,
-        use_container_width=True,
-        hide_index=True
-    )
+st.markdown("---")
 
 
 # ============================================================
 # NOVO CADASTRO
 # ============================================================
 
-st.markdown("---")
-
 with st.expander(
-    "➕ Novo Cadastro de Militar",
+    "➕ **Novo Cadastro de Militar**",
     expanded=False
 ):
 
@@ -1299,210 +1193,404 @@ with st.expander(
         "**💾 SALVAR NOVO CADASTRO**."
     )
 
-    novos_dados = formulario_militar(
-        dados=None,
-        prefixo="novo"
-    )
-
-    st.markdown("---")
-
-    if st.button(
-        "💾 SALVAR NOVO CADASTRO",
-        type="primary",
-        use_container_width=True,
-        key="btn_salvar_novo"
+    with st.form(
+        "form_novo_cadastro",
+        clear_on_submit=False
     ):
+
+        dados_novos = criar_formulario(
+            {},
+            "novo"
+        )
+
+        st.markdown("---")
+
+        salvar = st.form_submit_button(
+            "💾 SALVAR NOVO CADASTRO",
+            type="primary",
+            use_container_width=True
+        )
+
+    if salvar:
 
         try:
 
-            salvar_novo_cadastro(
-                novos_dados
+            matricula = normalizar_matricula(
+                dados_novos.get(
+                    "Matrícula",
+                    ""
+                )
             )
 
-            limpar_cache()
+            nome = texto(
+                dados_novos.get(
+                    "Nome",
+                    ""
+                )
+            ).strip()
 
-            st.success(
-                "🎉 Novo cadastro salvo com sucesso!"
+            if not matricula:
+
+                st.error(
+                    "❌ Informe a Matrícula."
+                )
+
+                st.stop()
+
+            if not nome:
+
+                st.error(
+                    "❌ Informe o Nome."
+                )
+
+                st.stop()
+
+            # -----------------------------------------------
+            # Verifica se matrícula já existe
+            # -----------------------------------------------
+
+            linha_existente = (
+                localizar_linha_por_matricula(
+                    worksheet,
+                    matricula
+                )
             )
 
-            st.info(
-                f"Matrícula: "
-                f"**{novos_dados.get('Matrícula', '')}**"
-                "\n\n"
-                f"Nome: "
-                f"**{novos_dados.get('Nome', '')}**"
+            if linha_existente:
+
+                st.error(
+                    f"❌ A matrícula "
+                    f"**{matricula}** já existe "
+                    f"na linha {linha_existente}."
+                )
+
+                st.stop()
+
+            # -----------------------------------------------
+            # Monta linha EXATAMENTE pela ordem da planilha
+            # -----------------------------------------------
+
+            nova_linha = montar_linha(
+                headers,
+                dados_novos
             )
 
-            st.balloons()
+            # -----------------------------------------------
+            # Confere quantidade
+            # -----------------------------------------------
+
+            if len(nova_linha) != len(headers):
+
+                st.error(
+                    "❌ Erro interno: quantidade "
+                    "de dados diferente da quantidade "
+                    "de colunas."
+                )
+
+                st.write(
+                    "Colunas:",
+                    len(headers)
+                )
+
+                st.write(
+                    "Dados:",
+                    len(nova_linha)
+                )
+
+                st.stop()
+
+            # -----------------------------------------------
+            # SALVA
+            # -----------------------------------------------
+
+            worksheet.append_row(
+                nova_linha,
+                value_input_option="USER_ENTERED"
+            )
+
+            st.cache_data.clear()
+
+            st.session_state[
+                "mensagem_sucesso"
+            ] = (
+                "🎉 Cadastro salvo com sucesso! "
+                f"Matrícula: {matricula} | "
+                f"Nome: {nome}"
+            )
+
+            st.rerun()
 
         except Exception as erro:
 
             st.error(
-                "❌ Não foi possível salvar o cadastro."
+                "❌ Erro ao salvar o cadastro."
             )
 
-            st.exception(
-                erro
-            )
+            st.exception(erro)
 
 
 # ============================================================
 # EDIÇÃO
 # ============================================================
 
-st.markdown("---")
-
 with st.expander(
-    "✏️ Editar Registro Existente",
+    "✏️ **Editar Registro Existente**",
     expanded=False
 ):
 
-    if (
-        df.empty
-        or "Matrícula" not in df.columns
-        or "Nome" not in df.columns
-    ):
+    if df.empty:
 
-        st.warning(
-            "As colunas Matrícula e Nome "
-            "são necessárias."
+        st.info(
+            "Não existem registros para editar."
         )
 
     else:
 
-        opcoes = []
+        if (
+            "Matrícula" not in df.columns
+            or "Nome" not in df.columns
+        ):
 
-        for _, linha in df.iterrows():
-
-            matricula = texto(
-                linha.get(
-                    "Matrícula",
-                    ""
-                )
-            ).strip()
-
-            nome = texto(
-                linha.get(
-                    "Nome",
-                    ""
-                )
-            ).strip()
-
-            if matricula:
-
-                opcoes.append(
-                    f"{matricula} - {nome}"
-                )
-
-        selecionado = st.selectbox(
-            "Selecione o militar:",
-            [""] + opcoes,
-            key="militar_edicao"
-        )
-
-        if selecionado:
-
-            matricula_editar = (
-                selecionado
-                .split(" - ", 1)[0]
-                .strip()
+            st.error(
+                "A planilha precisa possuir "
+                "as colunas Matrícula e Nome."
             )
 
-            registro = df[
-                df["Matrícula"].astype(str).str.strip()
-                == matricula_editar
-            ]
+        else:
 
-            if not registro.empty:
+            opcoes = []
 
-                dados_atual = (
-                    registro.iloc[0]
-                    .to_dict()
-                )
+            for _, linha in df.iterrows():
 
-                st.info(
-                    f"Editando: "
-                    f"**{dados_atual.get('Nome', '')}**"
-                )
+                matricula = texto(
+                    linha.get(
+                        "Matrícula",
+                        ""
+                    )
+                ).strip()
 
-                with st.form(
-                    "form_edicao",
-                    clear_on_submit=False
-                ):
+                nome = texto(
+                    linha.get(
+                        "Nome",
+                        ""
+                    )
+                ).strip()
 
-                    dados_editados = (
-                        formulario_militar(
-                            dados=dados_atual,
-                            prefixo="editar"
-                        )
+                if matricula:
+
+                    opcoes.append(
+                        f"{matricula} - {nome}"
                     )
 
-                    # Matrícula nunca muda
-                    dados_editados[
-                        "Matrícula"
-                    ] = matricula_editar
+            selecionado = st.selectbox(
+                "Selecione o militar:",
+                [""] + opcoes,
+                key="militar_edicao"
+            )
 
-                    salvar_edicao = (
-                        st.form_submit_button(
-                            "💾 SALVAR ALTERAÇÕES",
-                            type="primary",
-                            use_container_width=True
-                        )
+            if selecionado:
+
+                matricula_editar = (
+                    selecionado
+                    .split(" - ", 1)[0]
+                    .strip()
+                )
+
+                registros = df[
+                    df["Matrícula"]
+                    .astype(str)
+                    .str.strip()
+                    == matricula_editar
+                ]
+
+                if registros.empty:
+
+                    st.error(
+                        "❌ Registro não localizado."
                     )
 
-                if salvar_edicao:
+                else:
 
-                    try:
+                    dados_atual = (
+                        registros
+                        .iloc[0]
+                        .to_dict()
+                    )
 
-                        atualizar_cadastro(
-                            matricula_editar,
-                            dados_editados
+                    st.info(
+                        "Editando: "
+                        f"**{dados_atual.get('Nome', '')}** "
+                        f"| Matrícula: "
+                        f"**{matricula_editar}**"
+                    )
+
+                    with st.form(
+                        "form_edicao",
+                        clear_on_submit=False
+                    ):
+
+                        dados_editados = (
+                            criar_formulario(
+                                dados_atual,
+                                "edicao"
+                            )
                         )
 
-                        limpar_cache()
+                        # Matrícula é a chave e não pode mudar
+                        dados_editados[
+                            "Matrícula"
+                        ] = matricula_editar
 
-                        st.success(
-                            "✅ Alterações salvas "
-                            "com sucesso na Página1!"
+                        atualizar = (
+                            st.form_submit_button(
+                                "🔄 ATUALIZAR REGISTRO",
+                                type="primary",
+                                use_container_width=True
+                            )
                         )
 
-                        st.info(
-                            f"Matrícula: "
-                            f"**{matricula_editar}**"
-                        )
+                    if atualizar:
 
-                    except Exception as erro:
+                        try:
 
-                        st.error(
-                            "❌ Não foi possível "
-                            "salvar as alterações."
-                        )
+                            # --------------------------------
+                            # Localiza novamente diretamente
+                            # na planilha
+                            # --------------------------------
 
-                        st.exception(
-                            erro
-                        )
+                            row_idx = (
+                                localizar_linha_por_matricula(
+                                    worksheet,
+                                    matricula_editar
+                                )
+                            )
+
+                            if not row_idx:
+
+                                st.error(
+                                    "❌ A matrícula não foi "
+                                    "encontrada diretamente "
+                                    "na Página1."
+                                )
+
+                                st.stop()
+
+                            # --------------------------------
+                            # Confere o nome antes da gravação
+                            # --------------------------------
+
+                            nome_anterior = texto(
+                                dados_atual.get(
+                                    "Nome",
+                                    ""
+                                )
+                            ).strip()
+
+                            nome_novo = texto(
+                                dados_editados.get(
+                                    "Nome",
+                                    ""
+                                )
+                            ).strip()
+
+                            if not nome_novo:
+
+                                st.error(
+                                    "❌ O campo Nome ficou vazio. "
+                                    "A atualização foi cancelada "
+                                    "para evitar apagar o cadastro."
+                                )
+
+                                st.stop()
+
+                            # --------------------------------
+                            # MONTA A LINHA COMPLETA
+                            # --------------------------------
+
+                            linha_atualizada = (
+                                montar_linha(
+                                    headers,
+                                    dados_editados
+                                )
+                            )
+
+                            # --------------------------------
+                            # SEGURANÇA
+                            # --------------------------------
+
+                            if (
+                                len(linha_atualizada)
+                                != len(headers)
+                            ):
+
+                                st.error(
+                                    "❌ Quantidade de campos "
+                                    "incompatível. Atualização "
+                                    "cancelada."
+                                )
+
+                                st.stop()
+
+                            # --------------------------------
+                            # ATUALIZA A LINHA
+                            # --------------------------------
+
+                            intervalo = (
+                                f"A{row_idx}:"
+                                f"{gspread.utils.rowcol_to_a1("
+                                row_idx, len(headers)
+                                )}"
+                            )
+
+                            worksheet.update(
+                                intervalo,
+                                [
+                                    linha_atualizada
+                                ],
+                                value_input_option="USER_ENTERED"
+                            )
+
+                            st.cache_data.clear()
+
+                            st.session_state[
+                                "mensagem_sucesso"
+                            ] = (
+                                "✅ Registro atualizado "
+                                "com sucesso! "
+                                f"Matrícula: "
+                                f"{matricula_editar} | "
+                                f"Nome: {nome_novo}"
+                            )
+
+                            st.rerun()
+
+                        except Exception as erro:
+
+                            st.error(
+                                "❌ Erro ao atualizar "
+                                "o registro."
+                            )
+
+                            st.exception(erro)
 
 
 # ============================================================
 # EXCLUSÃO
 # ============================================================
 
-st.markdown("---")
-
 with st.expander(
-    "🗑️ Excluir Registro",
+    "🗑️ **Excluir Registro**",
     expanded=False
 ):
 
-    if (
-        df.empty
-        or "Matrícula" not in df.columns
-        or "Nome" not in df.columns
-    ):
+    st.warning(
+        "⚠️ A exclusão é permanente."
+    )
 
-        st.warning(
-            "As colunas Matrícula e Nome "
-            "são necessárias."
+    if df.empty:
+
+        st.info(
+            "Não existem registros."
         )
 
     else:
@@ -1531,25 +1619,25 @@ with st.expander(
                     f"{matricula} - {nome}"
                 )
 
-        selecionado_exclusao = (
-            st.selectbox(
-                "Selecione o militar:",
-                [""] + opcoes_exclusao,
-                key="militar_exclusao"
-            )
+        selecionado_excluir = st.selectbox(
+            "Selecione o militar:",
+            [""] + opcoes_exclusao,
+            key="militar_exclusao"
         )
 
-        if selecionado_exclusao:
+        if selecionado_excluir:
 
-            matricula_exclusao = (
-                selecionado_exclusao
+            matricula_excluir = (
+                selecionado_excluir
                 .split(" - ", 1)[0]
                 .strip()
             )
 
             registro = df[
-                df["Matrícula"].astype(str).str.strip()
-                == matricula_exclusao
+                df["Matrícula"]
+                .astype(str)
+                .str.strip()
+                == matricula_excluir
             ]
 
             st.dataframe(
@@ -1564,69 +1652,112 @@ with st.expander(
                 key="confirmar_exclusao"
             )
 
-            if st.button(
+            excluir = st.button(
                 "🔴 EXCLUIR REGISTRO",
                 type="primary",
                 disabled=not confirmar,
-                use_container_width=True,
-                key="btn_excluir"
-            ):
+                key="botao_excluir"
+            )
+
+            if excluir:
 
                 try:
 
-                    excluir_cadastro(
-                        matricula_exclusao
+                    row_idx = (
+                        localizar_linha_por_matricula(
+                            worksheet,
+                            matricula_excluir
+                        )
                     )
 
-                    limpar_cache()
+                    if not row_idx:
 
-                    st.success(
-                        "✅ Registro excluído "
-                        "com sucesso!"
+                        st.error(
+                            "❌ Matrícula não encontrada."
+                        )
+
+                        st.stop()
+
+                    worksheet.delete_rows(
+                        row_idx
                     )
+
+                    st.cache_data.clear()
+
+                    st.session_state[
+                        "mensagem_sucesso"
+                    ] = (
+                        "🗑️ Registro excluído com sucesso. "
+                        f"Matrícula: {matricula_excluir}"
+                    )
+
+                    st.rerun()
 
                 except Exception as erro:
 
                     st.error(
-                        "❌ Não foi possível "
-                        "excluir o registro."
+                        "❌ Erro ao excluir registro."
                     )
 
-                    st.exception(
-                        erro
-                    )
+                    st.exception(erro)
 
 
 # ============================================================
-# RODAPÉ / DIAGNÓSTICO
+# DIAGNÓSTICO
 # ============================================================
-
-st.markdown("---")
 
 with st.expander(
-    "🔧 Informações técnicas"
+    "🔧 **Diagnóstico da Conexão**",
+    expanded=False
 ):
 
     st.write(
-        "Planilha configurada:"
-    )
-
-    st.code(
+        "Planilha:",
         st.secrets["SHEET_ID"]
     )
 
     st.write(
-        "Aba utilizada:"
-    )
-
-    st.code(
-        NOME_ABA
+        "Aba:",
+        "Página1"
     )
 
     st.write(
-        "Quantidade de registros carregados:"
+        "Colunas encontradas:",
+        len(headers)
     )
 
-    st.code(
-        str(len(df))
+    st.write(
+        "Registros encontrados:",
+        len(df)
     )
+
+    if headers == HEADERS_ESPERADOS:
+
+        st.success(
+            "✅ A estrutura da Página1 "
+            "está exatamente de acordo "
+            "com o sistema."
+        )
+
+    else:
+
+        st.warning(
+            "⚠️ A ordem dos cabeçalhos da "
+            "planilha é diferente da lista "
+            "original. Isso não impede o "
+            "sistema, pois os campos são "
+            "salvos pelo nome do cabeçalho."
+        )
+
+        st.write(
+            "Cabeçalhos atualmente encontrados:"
+        )
+
+        for i, header in enumerate(
+            headers,
+            start=1
+        ):
+
+            st.write(
+                f"{i}. {header}"
+            )
