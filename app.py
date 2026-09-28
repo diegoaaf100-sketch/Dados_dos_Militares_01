@@ -104,11 +104,11 @@ try:
     # ==============================================================================
     df = load_data(SHEET_ID)
 
-    # ==============================================================================
+   # ==============================================================================
     # 2. FORMULÁRIO DE CADASTRO DE NOVOS REGISTROS
     # ==============================================================================
     with st.expander("➕ **Cadastrar Novo Militar**", expanded=False):
-        with st.form("form_novo_militar", clear_on_submit=False):
+        with st.form("form_novo_militar", clear_on_submit=True):
             tab_pessoal, tab_lotacao, tab_cessao, tab_ltip, tab_outros = st.tabs([
                 "👤 Identificação & Pessoal",
                 "🏢 Lotação & Promoção",
@@ -246,6 +246,7 @@ try:
                     hoje_data = st.date_input("Hoje:", value=None)
                     obs = st.text_area("OBS:")
 
+            # O BOTAO FICA DIRETAMENTE DENTRO DO FORM (FORA DAS TABS)
             btn_salvar = st.form_submit_button("💾 Salvar Registro Completo na Planilha")
 
         if btn_salvar:
@@ -258,12 +259,14 @@ try:
                         spreadsheet = client.open_by_key(SHEET_ID)
                         sheet = spreadsheet.sheet1
 
-                        headers = sheet.row_values(1)
-                        if not headers:
+                        # Obter cabeçalhos reais da planilha
+                        headers_brutos = sheet.row_values(1)
+                        if not headers_brutos:
                             st.error("❌ A planilha parece estar vazia ou a linha 1 de cabeçalho não foi encontrada.")
                             st.stop()
 
-                        novo_registro_map = {
+                        # Dicionário mapeando os valores digitados no formulário
+                        dados_input = {
                             "nº Funcional": num_funcional,
                             "Matrícula": matricula,
                             "CPF.": cpf_ponto,
@@ -276,7 +279,7 @@ try:
                             "Posto/ Grad": posto_grad,
                             "Fones": fones,
                             "Ano de ingresso": ano_ingresso,
-                            "Data de praça": str(data_praca) if data_praca else "",
+                            "Data de praça": data_praca.strftime("%d/%m/%Y") if data_praca else "",
                             "OME": ome,
                             "OME QOD": ome_qod,
                             "Atividade": atividade,
@@ -286,51 +289,57 @@ try:
                             "Tempo de serviço (ano, mês, dias)": tempo_servico_amd,
                             "Tempo de serviço (dias)": tempo_servico_dias,
                             "Tempo na OBM atual": tempo_obm_atual,
-                            "Data da última promoção ou Implant. PCNH": str(data_ult_promocao) if data_ult_promocao else "",
+                            "Data da última promoção ou Implant. PCNH": data_ult_promocao.strftime("%d/%m/%Y") if data_ult_promocao else "",
                             "Princípio da última promoção": principio_ult_promocao,
                             "Tempo no Posto/Grad. atual EM DIAS": tempo_posto_atual_dias,
-                            "Data da Movimentação em SP": str(data_mov_sp) if data_mov_sp else "",
+                            "Data da Movimentação em SP": data_mov_sp.strftime("%d/%m/%Y") if data_mov_sp else "",
                             "OME ANTERIOR AO ÚLTIMO SP PUBLICADO": ome_anterior,
-                            "Data de chegada na OBM Anteior": str(data_chegada_obm_anterior) if data_chegada_obm_anterior else "",
+                            "Data de chegada na OBM Anteior": data_chegada_obm_anterior.strftime("%d/%m/%Y") if data_chegada_obm_anterior else "",
                             "Movimentado (apagar antes de atualizar o SP)": movimentado,
                             "ÓRGÃO": orgao,
                             "Poder": poder,
                             "Ônus para Origem": onus_origem,
-                            "Início da Cessão ou requisição": str(inicio_cessao) if inicio_cessao else "",
+                            "Início da Cessão ou requisição": inicio_cessao.strftime("%d/%m/%Y") if inicio_cessao else "",
                             "Renovação de cessão - Atos/Portarias/Documentos": renovacao_cessao_atos,
                             "DOE/BGSDS de renovação": doe_bgsds_renovacao,
                             "SEI deslig.": sei_deslig,
                             "Processo RR e AFASTAMENTOS SUP. A 90 DIAS ININTERRUPTOS, PUBLICADOS EM SP": afastamentos_sup_90,
-                            "INÍCIO DA LTIP": str(inicio_ltip) if inicio_ltip else "",
-                            "TÉRMINO DA LTIP (inserir data de apresentação)": str(termino_ltip) if termino_ltip else "",
+                            "INÍCIO DA LTIP": inicio_ltip.strftime("%d/%m/%Y") if inicio_ltip else "",
+                            "TÉRMINO DA LTIP (inserir data de apresentação)": termino_ltip.strftime("%d/%m/%Y") if termino_ltip else "",
                             "Somatório LTIP gozada em anos": somatorio_ltip_anos,
                             "Somatório LTIP gozada em anos/meses/dias": somatorio_ltip_amd,
-                            "Somatório de todas LTIP gozadas em dias": somatorio_ltip_dias,
-                            "TOTAL DIAS EM LTIP no MESMO Posto/Grad.": total_dias_ltip_posto,
+                            "Somatório de todas LTIP gozadas em dias": str(somatorio_ltip_dias) if somatorio_ltip_dias else "0",
+                            "TOTAL DIAS EM LTIP no MESMO Posto/Grad.": str(total_dias_ltip_posto) if total_dias_ltip_posto else "0",
                             "Ato": ato,
                             "Doc. Publicação": doc_publicacao,
                             "SP da Adição": sp_adicao,
                             "Processo RR": processo_rr,
                             "Suplemento de Pessoal nº/Ano": suplemento_pessoal_num_ano,
-                            "Data Suplemento de Pessoal": str(data_suplemento_pessoal) if data_suplemento_pessoal else "",
-                            "Hoje": str(hoje_data) if hoje_data else "",
+                            "Data Suplemento de Pessoal": data_suplemento_pessoal.strftime("%d/%m/%Y") if data_suplemento_pessoal else "",
+                            "Hoje": hoje_data.strftime("%d/%m/%Y") if hoje_data else "",
                             "OBS": obs,
                         }
 
-                        linha_para_inserir = [
-                            str(novo_registro_map.get(col_h, "")) for col_h in headers
-                        ]
+                        # Normalizar nomes das colunas para bater com o dicionário
+                        linha_para_inserir = []
+                        for h in headers_brutos:
+                            col_limpa = str(h).strip().replace(":", "-")
+                            # Busca valor aproximado ou exato
+                            val = dados_input.get(h, dados_input.get(col_limpa, ""))
+                            linha_para_inserir.append(str(val))
 
+                        # Inserir na planilha
                         sheet.append_row(linha_para_inserir, value_input_option="USER_ENTERED")
-                        st.success(f"✅ Registro do militar **{nome}** (Matrícula: {matricula}) inserido com sucesso!")
+
+                        # Limpar cache e avisar o usuário
                         st.cache_data.clear()
-                        st.rerun()
+                        st.toast(f"✅ Registro do militar {nome} ({matricula}) salvo com sucesso!", icon="🎉")
+                        st.success(f"✅ Militar **{nome}** (Matrícula: {matricula}) cadastrado com sucesso!")
 
                 except gspread.exceptions.APIError as api_err:
                     st.error(f"❌ Erro da API do Google Sheets: {api_err}")
                 except Exception as err_add:
                     st.error(f"❌ Erro ao adicionar novo registro: {err_add}")
-
     # ==============================================================================
     # 3. SEÇÃO DE EXCLUSÃO DE REGISTROS
     # ==============================================================================
