@@ -696,10 +696,7 @@ try:
 
     st.markdown("---")
 
-  # ========================================================
-# 1. NOVO CADASTRO
-# ========================================================
-with st.expander(
+ with st.expander(
     "➕ **Novo Cadastro de Militar**",
     expanded=False
 ):
@@ -1338,7 +1335,6 @@ with st.expander(
             )
 
             st.exception(erro)
-
 
     # ========================================================
     # 2. EDIÇÃO DE REGISTRO
