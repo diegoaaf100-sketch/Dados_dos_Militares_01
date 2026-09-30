@@ -312,11 +312,6 @@ use_container_width=True,
 hide_index=True
 )
 
-st.caption(
-f"Total de registros exibidos: {len(resultado)}"
-)
-
-
 ============================================================
 PROJEÇÕES DE EFETIVO - 2026 A 2035
 ============================================================
@@ -535,3 +530,10 @@ st.metric(
     "P4 — Comp. +260",
     int(ultima_linha["P4 — Comp. +260"])
 )
+
+
+st.caption(
+f"Total de registros exibidos: {len(resultado)}"
+)
+
+
