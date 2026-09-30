@@ -531,7 +531,7 @@ st.metric(
     int(ultima_linha["P4 — Comp. +260"])
 )
 
-#========
+
 st.caption(
 f"Total de registros exibidos: {len(resultado)}"
 )
